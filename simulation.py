@@ -72,7 +72,7 @@ class GrasppingScenarios():
         else:
             return True                  
                     
-    def isolated_obj_scenario(self,runs, device, vis, output, debug):
+    def twoTableScenario(self,runs, device, vis, output, debug):
 
         objects = YcbObjects('objects/ycb_objects',
                             mod_orn=['ChipsCan', 'MustardBottle', 'TomatoSoupCan'],
@@ -243,8 +243,8 @@ if __name__ == '__main__':
     
     grasp = GrasppingScenarios(args.network)
 
-    if args.scenario == 'isolated':
-        grasp.isolated_obj_scenario(runs, device, vis, output=output, debug=False)
+    if args.scenario == 'twotable':
+        grasp.twoTableScenario(runs, device, vis, output=output, debug=False)
     # elif args.scenario == 'packed':
     #     grasp.packed_or_pile_scenario(runs, args.scenario, device, vis, output=output, debug=False)
     # elif args.scenario == 'pile':
