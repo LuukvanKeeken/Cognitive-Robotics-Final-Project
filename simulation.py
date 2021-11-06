@@ -122,7 +122,7 @@ class GrasppingScenarios():
             self.dummy_simulation_steps(30)
 
             ### Isolated Grasp
-            self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, camera, generator, env, i, vis)
+            #self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, camera, generator, env, i, vis)
             #env.robotToExamplePos()
             ### Pile/Packed Grasp
             self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, exampleGenerator, env, i, vis)

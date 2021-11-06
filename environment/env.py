@@ -1,3 +1,4 @@
+from numpy.testing._private.utils import IgnoreException
 from environment.utilities import setup_sisbot, Camera
 import math
 import time
@@ -81,6 +82,7 @@ class Environment:
             setup_sisbot(p, self.robot_id, gripper_type)
         self.eef_id = 7  # ee_link
 
+ 
         # Add force sensors
         p.enableJointForceTorqueSensor(
             self.robot_id, self.joints['left_inner_finger_pad_joint'].id)
@@ -232,7 +234,7 @@ class Environment:
 
     def reset_robot(self):
         user_parameters = (0, -1.5446774605904932, 1.54, -1.54, -1.5707970583733368, 0.0009377758247187636, 0.085)
-
+        actualRotations = [0]*7
         for _ in range(60):
             for i, name in enumerate(self.controlJoints):
                 
@@ -242,11 +244,16 @@ class Environment:
                 p.setJointMotorControl2(self.robot_id, joint.id, p.POSITION_CONTROL,
                                         targetPosition=user_parameters[i], force=joint.maxForce,
                                         maxVelocity=joint.maxVelocity)
-                
+
+                actualRotations[i] = p.getJointState(self.robot_id, joint.id)[0]
                 self.step_simulation()
                 
             self.controlGripper(controlMode=p.POSITION_CONTROL, targetPosition=0.085)
             self.step_simulation()
+
+            difference = np.linalg.norm(np.array(user_parameters) - np.array(actualRotations))
+            if difference < 0.01:
+                break
 
 
     def move_arm_away(self):
@@ -630,8 +637,10 @@ class Environment:
         self.update_obj_states()
 
 
-    def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False):
+    def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001):
         x, y, z, orn = action
+        roll, pitch, yaw = p.getEulerFromQuaternion(orn)
+
         x = np.clip(x, *self.ee_position_limit[0])
         y = np.clip(y, *self.ee_position_limit[1])
         z = np.clip(z, *self.ee_position_limit[2])
@@ -640,8 +649,19 @@ class Environment:
         jd = jd * 0
         still_open_flag_ = True  # Hot fix
         for _ in range(max_step):
+            if withoutRotation: 
+                real_xyz, real_xyzw = p.getLinkState(self.robot_id, self.eef_id)[0:2]
+                real_roll, real_pitch, real_yaw = p.getEulerFromQuaternion(real_xyzw)
+                orn = p.getQuaternionFromEuler([roll, pitch, real_yaw]) 
+
             # apply IK
-            joint_poses = p.calculateInverseKinematics(self.robot_id, self.eef_id, [x, y, z], orn, maxNumIterations=100, jointDamping=jd)
+            #lower limits for null space     
+            ll = [0.0,-3.14159265359, 0.001, -3.14159265359,-3.14159265359,-3.14159265359,-3.14159265359]
+            ul = [-1.0,3.14159265359, 0.001, 3.14159265359,3.14159265359,3.14159265359,3.14159265359]
+            jr = [5.8, 4, 5.8, 4, 5.8, 4, 6]
+            rp = [0, 0, 0, 0.5 * math.pi, 0, -math.pi * 0.5 * 0.66, 0]
+
+            joint_poses = p.calculateInverseKinematics(self.robot_id, self.eef_id, [x, y, z], orn, ll, ul, jr, rp ,maxNumIterations=100, jointDamping=jd)
             # Filter out the gripper
             for i, name in enumerate(self.controlJoints[:-1]):
                 joint = self.joints[name]
@@ -660,12 +680,12 @@ class Environment:
                     print('Collision detected!', self.check_grasped_id())
                 return False, p.getLinkState(self.robot_id, self.eef_id)[0:2]
             # Check xyz and rpy error
-            real_xyz, real_xyzw = p.getLinkState(
-                self.robot_id, self.eef_id)[0:2]
-            roll, pitch, yaw = p.getEulerFromQuaternion(orn)
+            real_xyz, real_xyzw = p.getLinkState(self.robot_id, self.eef_id)[0:2]
             real_roll, real_pitch, real_yaw = p.getEulerFromQuaternion(real_xyzw)
-            if np.linalg.norm(np.array((x, y, z)) - real_xyz) < 0.001 \
-                    and np.abs((roll - real_roll, pitch - real_pitch, yaw - real_yaw)).sum() < 0.001:
+            posDifference = np.linalg.norm(np.array((x, y, z)) - real_xyz) 
+            if withoutRotation: real_yaw = yaw
+            rotationDifference = np.abs((roll - real_roll, pitch - real_pitch, yaw - real_yaw)).sum()
+            if posDifference < positionAccuracy and  rotationDifference < rotationAccuracy:
                 if verbose:
                     print('Reach target with', _, 'steps')
                 return True, (real_xyz, real_xyzw)
@@ -674,18 +694,6 @@ class Environment:
         if self.debug:
             print('Failed to reach the target')
         return False, p.getLinkState(self.robot_id, self.eef_id)[0:2]
-
-    #def executeMotionBuffer(self, buffer):
-    #    while len(buffer) != 0:
-    #        if buffer[0][0] == "PTP":
-
-
-    #        if buffer[0][0] == "LIN":
-    #            joint_poses = p.calculateInverseKinematics(self.robot_id, self.eef_id, [x, y, z], orn, maxNumIterations=100, jointDamping=jd)
-
-
-
-
 
     def grasp(self, pos: tuple, roll: float, gripper_opening_length: float, obj_height: float, debug: bool = False):
         """
@@ -704,29 +712,14 @@ class Environment:
         # Move above target
         #self.reset_robot()
         self.move_gripper(0.1)
-        orn = p.getQuaternionFromEuler([roll, np.pi/2, 0.0])      
-        # end original code
-    
-
-
-        #motionBuffer = []
-        #pos = [x, y, self.GRIPPER_MOVING_HEIGHT]
-        #motionBuffer.append(["PTP", pos, orn, 0.04])
-        #z_offset = self.calc_z_offset(gripper_opening_length)
-        #pos = [x, y, z + z_offset]
-        #motionBuffer.append(["LIN", pos, orn, 0.04])
-        #self.executeMotionBuffer(motionBuffer)
-        
-        
-        #, , [x, y, z], orn, maxNumIterations=100, jointDamping=jd)
-        #[jac_t, jac_r] = p.calculateJacobian(self.robot_id, self.eef_id-1, [0] * 3, list(q), [0] * n_dofs, [0] * n_dofs)
-        #ee_lin_vel_via_jacobian = np.asarray(np.matmul(jac_t, qd).T[0])
-        #ee_ang_vel_via_jacobian = np.asarray(np.matmul(jac_r, qd).T[0])
-
+        orn = p.getQuaternionFromEuler([roll, np.pi/2, 0.0])    
 
         
-        # start original code
-        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn])
+
+        self.move_ee([x/2, y/2, self.GRIPPER_MOVING_HEIGHT, orn], positionAccuracy= 0.1 , rotationAccuracy= 2)
+
+        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.1, rotationAccuracy=0.1)
+
         # Reduce grip to get a tighter grip
         gripper_opening_length *= self.GRIP_REDUCTION
 
@@ -752,13 +745,10 @@ class Environment:
         y_orn = p.getQuaternionFromEuler([-np.pi*0.25, np.pi/2, 0.0])
 
         #self.move_arm_away()
-        self.move_ee([self.TARGET_ZONE_POS[0],
-                     self.TARGET_ZONE_POS[1], 1.25, y_orn])
-        self.move_ee([self.TARGET_ZONE_POS[0],
-                     self.TARGET_ZONE_POS[1], y_drop, y_orn])
+        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], 1.25, y_orn], withoutRotation=True, positionAccuracy= 0.1)
+        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], y_drop, y_orn],withoutRotation=True, positionAccuracy= 0.1)
         self.move_gripper(0.085)
-        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1],
-                     self.GRIPPER_MOVING_HEIGHT, y_orn])
+        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], self.GRIPPER_MOVING_HEIGHT, y_orn], withoutRotation=True, positionAccuracy= 0.1)
 
         # Wait then check if object is in target zone
         for _ in range(20):
