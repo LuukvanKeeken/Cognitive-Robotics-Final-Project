@@ -107,13 +107,13 @@ class GrasppingScenarios():
             env.remove_all_obj()  
 
             # Init objects
-            # Isolated object - RIGHT
+            # Example object - RIGHT
             # Randomly select example object out of the 5 objects in the pack
             object_number = randrange(0, 6)
             path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[object_number])
             env.load_example_obj(path, mod_orn, mod_stiffness)
 
-            ### Packed object - LEFT
+            # Pile of objects - LEFT
             number_of_objects = 5
             info = objects.get_n_first_obj_info(number_of_objects)
             if True:
