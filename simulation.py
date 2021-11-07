@@ -11,6 +11,7 @@ import cv2
 import math
 import matplotlib.pyplot as plt
 import time
+from random import randrange
 
 
 class GrasppingScenarios():
@@ -105,16 +106,18 @@ class GrasppingScenarios():
             env.reset_robot()          
             env.remove_all_obj()  
 
-            ## Init objects
-            ### Isolated object - LEFT
-            path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[0])
-            env.load_isolated_obj(path, mod_orn, mod_stiffness)
+            # Init objects
+            # Example object - RIGHT
+            # Randomly select example object out of the 5 objects in the pack
+            object_number = randrange(0, 6)
+            path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[object_number])
+            env.load_example_obj(path, mod_orn, mod_stiffness)
 
-            ### Packed object - RIGHT
+            # Pile of objects - LEFT
             number_of_objects = 5
             info = objects.get_n_first_obj_info(number_of_objects)
             if True:
-                env.create_example_packed(info, 1.08)
+                env.create_packed(info)
             else:
                 env.create_example_pile(info, 1.08)
 
@@ -122,7 +125,7 @@ class GrasppingScenarios():
             self.dummy_simulation_steps(30)
 
             ### Isolated Grasp
-            #self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, camera, generator, env, i, vis)
+            self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, camera, generator, env, i, vis)
             #env.robotToExamplePos()
             ### Pile/Packed Grasp
             self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, exampleGenerator, env, i, vis)

@@ -1,4 +1,0 @@
-Total:
-Grasp acc=0.800 (4/5) --- Manipulation acc=0.800 (4/5) 
-
-Accuracy per object:

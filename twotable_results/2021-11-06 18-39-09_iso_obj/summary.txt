@@ -1,5 +1,0 @@
-Total:
-Grasp acc=0.800 (4/5) --- Manipulation acc=0.600 (3/5) 
-
-Accuracy per object:
-Banana: Grasp acc=0.800 (4/5) --- Manipulation acc=0.600 (3/5) 
