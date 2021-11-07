@@ -124,10 +124,10 @@ class GrasppingScenarios():
             # Make sure the items have come to rest   
             self.dummy_simulation_steps(30)
 
-            ### Isolated Grasp
+            # Object pile
             self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, camera, generator, env, i, vis)
             #env.robotToExamplePos()
-            ### Pile/Packed Grasp
+            # Example object
             self.run_grasp_experiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, exampleGenerator, env, i, vis)
 
             ## Write results to disk
