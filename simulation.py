@@ -142,6 +142,8 @@ class GrasppingScenarios():
             
             bgr, depth, _ = camera.get_cam_img()
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+
+            np.savetxt("depth_data.txt", depth, delimiter=",")
                         
             grasps, save_name = generator.predict_grasp(rgb, depth, n_grasps=number_of_attempts, show_output=output)
             if (grasps == []):
