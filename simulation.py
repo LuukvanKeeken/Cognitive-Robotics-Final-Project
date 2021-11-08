@@ -12,7 +12,11 @@ import math
 import matplotlib.pyplot as plt
 import time
 from random import randrange
-
+from skimage.segmentation import watershed
+from skimage.feature import peak_local_max
+from scipy import ndimage as ndi
+from skimage.morphology import disk
+from skimage.filters import rank
 
 class GrasppingScenarios():
     def __init__(self,network_model="GGCNN"):
@@ -142,6 +146,56 @@ class GrasppingScenarios():
             
             bgr, depth, _ = camera.get_cam_img()
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            image = -np.array(depth*255).astype('uint8')
+            #image = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+
+            '''
+            thresh = -np.array(depth*255).astype('uint8')
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, (7,7))
+
+            ret, thresh = cv2.threshold(thresh, 24, 255, cv2.THRESH_BINARY)
+
+            distance = ndi.distance_transform_edt(thresh)
+            coords = peak_local_max(distance, footprint=np.ones((7,7)), labels=thresh)
+            mask = np.zeros(distance.shape, dtype=bool)
+            mask[tuple(coords.T)] = True
+
+            markers, _ = ndi.label(mask)
+            labels = watershed(-distance, markers, mask=thresh)
+            '''
+
+            #denoise image
+            denoised = rank.median(image, disk(3))
+
+            # find continuous region (low gradient -
+            # where less than 10 for this image) --> markers
+            # disk(5) is used here to get a more smooth image
+            markers = rank.gradient(denoised, disk(3)) < 1
+            markers = ndi.label(markers)[0]
+
+            # local gradient (disk(2) is used to keep edges thin)
+            gradient = rank.gradient(denoised, disk(1))
+
+            # process the watershed
+            labels = watershed(gradient, markers)
+
+            fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True, num=1)
+            ax = axes.ravel()
+
+            ax[0].imshow(image, cmap=plt.cm.gray)
+            ax[0].set_title('Overlapping objects')
+            ax[1].imshow(-100*gradient, cmap=plt.cm.gray)
+            ax[1].set_title('Distances')
+            ax[2].imshow(labels, cmap=plt.cm.nipy_spectral)
+            ax[2].set_title('Separated objects')
+
+            for a in ax:
+                a.set_axis_off()
+
+            fig.tight_layout()
+            plt.show()
+
+            exit()
                         
             grasps, save_name = generator.predict_grasp(rgb, depth, n_grasps=number_of_attempts, show_output=output)
             if (grasps == []):
