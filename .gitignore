@@ -55,3 +55,8 @@ docs/_build/
 *.png
 .vscode/launch.json
 twotable_results/
+depth_data.txt
+depth_data2.txt
+depth_data3.txt
+depth_data*
+
