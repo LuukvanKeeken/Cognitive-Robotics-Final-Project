@@ -609,7 +609,7 @@ class Environment:
         center_obj, _, _ = self.load_obj(
             path, [init_x, init_y, init_z], yaw, mod_orn, mod_stiffness)
 
-        margin = 0.3
+        margin = 0.25
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[1]
         left_obj_id, _, _ = self.load_obj(path, [init_x-margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
