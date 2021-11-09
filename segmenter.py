@@ -10,7 +10,7 @@ class Segmenter:
     def __init__(self):
         pass
 
-    def create_new_image(self, translated_cluster, cluster):
+    def create_new_depth_image(self, translated_cluster, cluster):
         new_image = np.full_like(self.depth_image, self.depth_image[0][0])
         for i in range(len(translated_cluster)):
             new_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.depth_image[cluster[i][0], cluster[i][1]]
@@ -21,6 +21,29 @@ class Segmenter:
 
         return new_image
         
+
+    def create_new_rgb_image(self, translated_cluster, cluster):
+        new_image = np.full_like(self.rgb_image, self.rgb_image[0][0])
+        new_image_test = np.full_like(self.depth_image, self.rgb_image[0][0][0])
+        for i in range(len(translated_cluster)):
+            new_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.rgb_image[cluster[i][0], cluster[i][1]]
+            new_image_test[translated_cluster[i][0]][translated_cluster[i][1]] = self.rgb_image[cluster[i][0]][cluster[i][1]][0]
+        
+        new_image_plot = plt.figure()
+        new_image_plot_ax = new_image_plot.add_subplot()
+        new_image_plot_ax = sns.heatmap(new_image_test)
+
+        rgb_img_plot = plt.figure()
+        rgb_ax = rgb_img_plot.add_subplot()
+
+        
+        for i in range(81, 141):
+            print(i)
+            for j in range(81, 141):
+                rgb_ax.scatter(j, i, c=[[new_image[i][j][0]/255, new_image[i][j][1]/255, new_image[i][j][2]/255]])
+
+        
+
 
 
     def find_clusters(self):
@@ -53,10 +76,15 @@ class Segmenter:
             self.translated_clusters[i] = self.translate_clusters(self.clusters[i], self.cluster_centers[i])
 
         self.new_depth_images = []
-        for i in range(5):
-            self.new_depth_images.append(self.create_new_image(self.translated_clusters[i], self.clusters[i]))
+        self.new_rgb_images = []
+        for i in range(1):
+            self.new_depth_images.append(self.create_new_depth_image(self.translated_clusters[i], self.clusters[i]))
+            self.new_rgb_images.append(self.create_new_rgb_image(self.translated_clusters[i], self.clusters[i]))
         plt.show()
         exit(0)
+        segmentations = []
+        for i in range(5):
+            segmentations.append[self.cluster_centers[i], self.new_depth_images[i],] 
 
 
     
