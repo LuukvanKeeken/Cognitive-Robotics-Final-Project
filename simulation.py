@@ -144,6 +144,7 @@ class GrasppingScenarios():
             bgr, depth, _ = camera.get_cam_img()
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
+            #TODO: misschien ergens deze instance 1 keer maken ipv in elk experiment?
             segmenter = Segmenter()
             segmentations = segmenter.get_segmentations(rgb, depth)
 
