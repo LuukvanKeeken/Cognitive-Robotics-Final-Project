@@ -12,6 +12,7 @@ import math
 import matplotlib.pyplot as plt
 import time
 from random import randrange
+from segmenter import Segmenter
 
 
 class GrasppingScenarios():
@@ -109,7 +110,7 @@ class GrasppingScenarios():
             # Init objects
             # Example object - RIGHT
             # Randomly select example object out of the 5 objects in the pack
-            object_number = randrange(0, 6)
+            object_number = randrange(0, 5)
             path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[object_number])
             env.load_example_obj(path, mod_orn, mod_stiffness)
 
@@ -143,14 +144,9 @@ class GrasppingScenarios():
             bgr, depth, _ = camera.get_cam_img()
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
-            
-            np.savetxt("depth_data.txt", depth, delimiter=",")
-            rgb_transpose = rgb.transpose((2, 0, 1))
-            rgb_transpose_ravel = rgb_transpose.ravel()
-            r, g, b, = np.split(rgb_transpose_ravel, 3)
-            np.savetxt("r_colour_data.txt", r, delimiter=',')
-            np.savetxt("g_colour_data.txt", g, delimiter=',')
-            np.savetxt("b_colour_data.txt", b, delimiter=',')
+            segmenter = Segmenter()
+            segmentations = segmenter.get_segmentations(rgb, depth)
+
                         
             grasps, save_name = generator.predict_grasp(rgb, depth, n_grasps=number_of_attempts, show_output=output)
             if (grasps == []):
