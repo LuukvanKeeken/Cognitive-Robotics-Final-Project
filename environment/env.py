@@ -612,27 +612,23 @@ class Environment:
         margin = 0.3
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[1]
-        left_obj_id, _, _ = self.load_obj(
-            path, [init_x-margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+        left_obj_id, _, _ = self.load_obj(path, [init_x-margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[2]
-        top_obj_id, _, _ = self.load_obj(
-            path, [init_x, init_y+margin, init_z], yaw, mod_orn, mod_stiffness)
+        top_obj_id, _, _ = self.load_obj(path, [init_x, init_y+margin, init_z], yaw, mod_orn, mod_stiffness)
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[3]
-        right_obj_id, _, _ = self.load_obj(
-            path, [init_x+margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+        right_obj_id, _, _ = self.load_obj(path, [init_x+margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[4]
-        down_obj_id, _, _ = self.load_obj(
-            path, [init_x, init_y-margin, init_z], yaw, mod_orn, mod_stiffness)
+        down_obj_id, _, _ = self.load_obj(path, [init_x, init_y-margin, init_z], yaw, mod_orn, mod_stiffness)
 
         self.wait_until_all_still()
-        step = 0.01
-        self.move_obj_along_axis(left_obj_id, 0, '+', step, init_x)
-        self.move_obj_along_axis(top_obj_id, 1, '-', step, init_y)
-        self.move_obj_along_axis(right_obj_id, 0, '-', step, init_x)
-        self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
+        #step = 0.01
+        #self.move_obj_along_axis(left_obj_id, 0, '+', step, init_x)
+        #self.move_obj_along_axis(top_obj_id, 1, '-', step, init_y)
+        #self.move_obj_along_axis(right_obj_id, 0, '-', step, init_x)
+        #self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()
 
 
