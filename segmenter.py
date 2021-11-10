@@ -1,9 +1,9 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.cluster import KMeans, SpectralClustering
 import random
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from sklearn.cluster import KMeans, SpectralClustering
 
 
 class Segmenter:
@@ -19,29 +19,33 @@ class Segmenter:
           each point in the cluster. At the new coordinates (the translated points),
           the depth or rgb values of the old coordinates (in the original images) are
           inserted.
-        
+
         translated_cluster: points of the cluster when translated to the center.
         cluster: points of the cluster.
         """
 
-        new_depth_image = np.full_like(self.depth_image, self.depth_image[0][0])
+        new_depth_image = np.full_like(self.depth_image,
+                                       self.depth_image[0][0])
         new_rgb_image = np.full_like(self.rgb_image, self.rgb_image[0][0])
 
         for i in range(len(translated_cluster)):
-            new_depth_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.depth_image[cluster[i][0], cluster[i][1]]
-            new_rgb_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.rgb_image[cluster[i][0], cluster[i][1]]
-
+            new_depth_image[translated_cluster[i][0]][
+                translated_cluster[i][1]] = self.depth_image[cluster[i][0],
+                                                             cluster[i][1]]
+            new_rgb_image[translated_cluster[i][0]][
+                translated_cluster[i][1]] = self.rgb_image[cluster[i][0],
+                                                           cluster[i][1]]
 
         return new_depth_image, new_rgb_image
-
 
     def find_clusters(self, n_clusters):
         """
         Method that clusters the data (of which the table data is already
-          removed) using k-means clustering. Labels for each point, clusters 
+          removed) using k-means clustering. Labels for each point, clusters
           of points, and the corresponding cluster centers are saved.
         """
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(self.data_for_clustering)
+        kmeans = KMeans(n_clusters=n_clusters,
+                        random_state=0).fit(self.data_for_clustering)
         a_x = []
         a_y = []
         self.labels = kmeans.labels_
@@ -50,9 +54,9 @@ class Segmenter:
         for i in range(len(self.data_for_clustering)):
             a_x.append(self.data_for_clustering[i][0])
             a_y.append(self.data_for_clustering[i][1])
-            self.clusters[self.labels[i]].append([self.data_for_clustering[i][0], self.data_for_clustering[i][1]])
-        
-
+            self.clusters[self.labels[i]].append([
+                self.data_for_clustering[i][0], self.data_for_clustering[i][1]
+            ])
 
     def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
@@ -78,32 +82,35 @@ class Segmenter:
 
         self.data_for_clustering = self.remove_table()
 
-        self.find_clusters()
+        self.find_clusters(n_clusters)
 
         self.translated_clusters = [[] for i in range(n_clusters)]
         self.new_depth_images = []
         self.new_rgb_images = []
         for i in range(n_clusters):
-            self.translated_clusters[i] = self.translate_clusters(self.clusters[i], self.cluster_centers[i])
-            new_depth_image, new_rgb_image = self.create_new_images(self.translated_clusters[i], self.clusters[i])
+            self.translated_clusters[i] = self.translate_clusters(
+                self.clusters[i], self.cluster_centers[i])
+            new_depth_image, new_rgb_image = self.create_new_images(
+                self.translated_clusters[i], self.clusters[i])
             self.new_depth_images.append(new_depth_image)
             self.new_rgb_images.append(new_rgb_image)
 
         segmentations = []
         for i in range(n_clusters):
-            segmentations.append([self.cluster_centers[i], self.new_rgb_images[i], self.new_depth_images[i]])
+            segmentations.append([
+                self.cluster_centers[i], self.new_rgb_images[i],
+                self.new_depth_images[i]
+            ])
 
         return segmentations
-        
-         
 
     def remove_table(self):
         """
         Method for extracting data belonging to objects, and excluding data
           belonging to the table. That is, any point under the cutoff point
-          (the median of the depth data) is used. One set of data is created, 
+          (the median of the depth data) is used. One set of data is created,
           containing the depth and rgb values for each point in the original image.
-          This data is returned to be used in clustering. 
+          This data is returned to be used in clustering.
         """
         cutoff = np.median(self.depth_image)
         max_depth = np.max(self.depth_image)
@@ -113,12 +120,15 @@ class Segmenter:
             for j in range(len(row)):
                 if (self.depth_image[i][j] < cutoff):
                     # Depth is normalised based on the max depth in the data, rgb_image based on max possible value (255).
-                    point = [i, j, self.depth_image[i][j], self.rgb_image[i][j][0]/255, self.rgb_image[i][j][1]/255, self.rgb_image[i][j][2]/255]
+                    point = [
+                        i, j, self.depth_image[i][j],
+                        self.rgb_image[i][j][0] / 255,
+                        self.rgb_image[i][j][1] / 255,
+                        self.rgb_image[i][j][2] / 255
+                    ]
                     clustering_data.append(point)
 
         return clustering_data
-
-    
 
     def translate_clusters(self, cluster, cluster_center):
         """
@@ -128,7 +138,6 @@ class Segmenter:
         cluster: set of point belonging to one cluster.
         cluster_center: the corresponding center of that cluster.
         """
-
 
         center_x = round(cluster_center[0])
         center_y = round(cluster_center[1])
@@ -143,7 +152,3 @@ class Segmenter:
                 new_cluster.append([new_x, new_y])
 
         return new_cluster
-                
-
-
-

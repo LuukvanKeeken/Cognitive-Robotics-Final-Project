@@ -49,8 +49,11 @@ class GraspGenerator:
             self.internal_representation = nn.Sequential(
                 *list(self.net.children())[:-13])
         elif network == 'CGR_ConvNet':
+            # print(*list(self.net.children()))
             self.internal_representation = nn.Sequential(
-                *list(self.net.children())[:6])
+                *list(self.net.children())[:6],
+                nn.AvgPool2d((3, 3), stride=(1, 1), padding=(1, 1)),
+                nn.Flatten())
         else:
             print('Other networks not supported yet!')
 

@@ -141,9 +141,9 @@ class GrasppingScenarios():
                                           self.depth_radius, self.fig,
                                           self.IMG_SIZE, self.network_model,
                                           device)
-        objects.shuffle_objects()
         runs = 10
         for i in range(runs):
+            objects.shuffle_objects()
             print("----------- run ", i + 1, " -----------")
             print("network model = ", self.network_model)
             print("size of input image (W, H) = (", self.IMG_SIZE, " ,",
