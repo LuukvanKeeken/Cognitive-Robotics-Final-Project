@@ -142,7 +142,6 @@ class GrasppingScenarios():
                                           self.depth_radius, self.fig,
                                           self.IMG_SIZE, self.network_model,
                                           device)
-        runs = 100
         for i in tqdm(range(runs)):
             objects.shuffle_objects()
             # print("----------- run ", i + 1, " -----------")
@@ -562,7 +561,7 @@ def parse_args():
 
     parser.add_argument('--runs',
                         type=int,
-                        default=1,
+                        default=10,
                         help='Number of runs the scenario is executed')
     parser.add_argument('--attempts',
                         type=int,
