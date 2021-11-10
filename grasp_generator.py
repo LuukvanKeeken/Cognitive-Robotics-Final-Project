@@ -69,12 +69,14 @@ class GraspGenerator:
                         [0,             0,              0,  1]
                         ])
 
-    def grasp_to_robot_frame(self, grasp, depth_img):
+    def grasp_to_robot_frame(self, grasp, depth_img, addX = 0, addY = 0):
         """
         return: x, y, z, roll, opening length gripper, object height
         """
         # Get x, y, z of center pixel
         x_p, y_p = grasp.center[0], grasp.center[1]
+        x_p += addX
+        y_p += addY
 
         # Get area of depth values around center pixel
         x_min = np.clip(x_p-self.depth_r, 0, self.IMG_WIDTH)

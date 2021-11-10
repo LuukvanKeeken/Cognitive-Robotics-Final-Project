@@ -85,7 +85,7 @@ class Segmenter:
 
         segmentations = []
         for i in range(5):
-            segmentations.append([self.cluster_centers[i], self.new_depth_images[i], self.new_rgb_images[i]])
+            segmentations.append([self.cluster_centers[i], self.new_rgb_images[i], self.new_depth_images[i]])
 
         return segmentations
         
