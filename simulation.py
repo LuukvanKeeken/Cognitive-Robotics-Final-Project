@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pybullet as p
 import torch
+from tqdm import tqdm
 
 from environment.env import Environment
 from environment.utilities import Camera
@@ -141,14 +142,14 @@ class GrasppingScenarios():
                                           self.depth_radius, self.fig,
                                           self.IMG_SIZE, self.network_model,
                                           device)
-        runs = 10
-        for i in range(runs):
+        runs = 100
+        for i in tqdm(range(runs)):
             objects.shuffle_objects()
-            print("----------- run ", i + 1, " -----------")
-            print("network model = ", self.network_model)
-            print("size of input image (W, H) = (", self.IMG_SIZE, " ,",
-                  self.IMG_SIZE, ")")
-            print(f" all objects {objects.obj_names}")
+            # print("----------- run ", i + 1, " -----------")
+            # print("network model = ", self.network_model)
+            # print("size of input image (W, H) = (", self.IMG_SIZE, " ,",
+            #       self.IMG_SIZE, ")")
+            # print(f" all objects {objects.obj_names}")
 
             ## Run the grasp experiment
             self.env.reset_robot()
