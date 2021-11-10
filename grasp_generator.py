@@ -45,18 +45,6 @@ class GraspGenerator:
             self.net = torch.load(net_path, map_location='cpu')
             self.device = get_device(force_cpu=True)
 
-        if network == 'GR_ConvNet':
-            self.internal_representation = nn.Sequential(
-                *list(self.net.children())[:-13])
-        elif network == 'CGR_ConvNet':
-            # print(*list(self.net.children()))
-            self.internal_representation = nn.Sequential(
-                *list(self.net.children())[:6],
-                nn.AvgPool2d((3, 3), stride=(1, 1), padding=(1, 1)),
-                nn.Flatten())
-        else:
-            print('Other networks not supported yet!')
-
         self.near = camera.near
         self.far = camera.far
         self.depth_r = depth_radius
@@ -81,6 +69,30 @@ class GraspGenerator:
         return np.array([[np.cos(rot), -np.sin(rot), 0, x],
                          [np.sin(rot), np.cos(rot), 0, y], [0, 0, 1, z],
                          [0, 0, 0, 1]])
+
+    def pixelsToRobotFrame(self, x_p, y_p, depth_img):
+        # Get area of depth values around center pixel
+        x_min = np.clip(x_p - self.depth_r, 0, self.IMG_WIDTH)
+        x_max = np.clip(x_p + self.depth_r, 0, self.IMG_WIDTH)
+        y_min = np.clip(y_p - self.depth_r, 0, self.IMG_WIDTH)
+        y_max = np.clip(y_p + self.depth_r, 0, self.IMG_WIDTH)
+        depth_values = depth_img[x_min:x_max, y_min:y_max]
+
+        # Get minimum depth value from selected area
+        z_p = np.amin(depth_values)
+
+        # Convert pixels to meters
+        x_p /= self.PIX_CONVERSION
+        y_p /= self.PIX_CONVERSION
+        z_p = self.far * self.near / (self.far - (self.far - self.near) * z_p)
+
+        # Convert image space to camera's 3D space
+        img_xyz = np.array([x_p, y_p, -z_p, 1])
+        cam_space = np.matmul(self.img_to_cam, img_xyz)
+
+        # Convert camera's 3D space to robot frame of reference
+        robot_frame_ref = np.matmul(self.cam_to_robot_base, cam_space)
+        return robot_frame_ref[0], robot_frame_ref[1], robot_frame_ref[2]
 
     def grasp_to_robot_frame(self, grasp, depth_img, addX=0, addY=0):
         """
@@ -148,8 +160,67 @@ class GraspGenerator:
 
         return q_img, ang_img, width_img
 
-    def predict(self, rgb, depth, n_grasps=1, show_output=False):
+    def calculateRepresentation(self, rgb, depth, n_grasps=1, show_output=False):
 
+        max_val = np.max(depth)
+        depth = depth * (255 / max_val)
+        depth = np.clip((depth - depth.mean()) / 175, -1, 1)
+
+        if (self.network == 'GR_ConvNet'):
+            ##### GR-ConvNet #####
+            depth = np.expand_dims(np.array(depth), axis=2)
+            img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH)
+            x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
+        elif (self.network == 'CGR_ConvNet'):
+            ##### GR-ConvNet #####
+            depth = np.expand_dims(np.array(depth), axis=2)
+            img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH)
+            x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
+        elif (self.network == 'GGCNN'):
+            x = torch.from_numpy(
+                depth.reshape(1, 1, self.IMG_WIDTH,
+                              self.IMG_WIDTH).astype(np.float32))
+        else:
+            print(
+                "The selected network has not been implemented yet -- please choose another network!"
+            )
+            exit()
+
+        with torch.no_grad():
+            xc = x.to(self.device)
+            if (self.network == 'GR_ConvNet'):
+                ##### GR-ConvNet #####
+                pred = self.net.predict(xc)
+                internal = self.internal_representation(xc)
+                # print(
+                #     '\n--------------------------------------------------------------------'
+                # )
+                # print(internal)
+                # print(
+                #     '--------------------------------------------------------------------\n'
+                # )
+                pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
+                q_img, ang_img, width_img = self.post_process_output(
+                    pred['pos'], pred['cos'], pred['sin'], pred['width'],
+                    pixels_max_grasp)
+            elif (self.network == 'CGR_ConvNet'):
+                ##### CGR-ConvNet #####
+                pred = self.net(xc)
+                internal = self.internal_representation(xc)
+                pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
+                q_img, ang_img, width_img = self.post_process_output(
+                    pred[0], pred[1], pred[2], pred[3], pixels_max_grasp)
+            elif (self.network == 'GGCNN'):
+                pred = self.net(xc)
+                pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
+                q_img, ang_img, width_img = self.post_process_output(
+                    pred[0], pred[1], pred[2], pred[3], pixels_max_grasp)
+            else:
+                print("you need to add your function here!")
+
+        return internal
+
+    def predict(self, rgb, depth, n_grasps=1, show_output=False):
         max_val = np.max(depth)
         depth = depth * (255 / max_val)
         depth = np.clip((depth - depth.mean()) / 175, -1, 1)
@@ -180,14 +251,6 @@ class GraspGenerator:
             if (self.network == 'GR_ConvNet'):
                 ##### GR-ConvNet #####
                 pred = self.net.predict(xc)
-                internal = self.internal_representation(xc)
-                # print(
-                #     '\n--------------------------------------------------------------------'
-                # )
-                # print(internal)
-                # print(
-                #     '--------------------------------------------------------------------\n'
-                # )
                 pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
                 q_img, ang_img, width_img = self.post_process_output(
                     pred['pos'], pred['cos'], pred['sin'], pred['width'],
@@ -195,7 +258,6 @@ class GraspGenerator:
             elif (self.network == 'CGR_ConvNet'):
                 ##### CGR-ConvNet #####
                 pred = self.net(xc)
-                internal = self.internal_representation(xc)
                 pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
                 q_img, ang_img, width_img = self.post_process_output(
                     pred[0], pred[1], pred[2], pred[3], pixels_max_grasp)
@@ -230,7 +292,7 @@ class GraspGenerator:
                                ang_img,
                                width_img=width_img,
                                no_grasps=n_grasps)
-        return grasps, save_name, internal
+        return grasps, save_name
 
     def predict_grasp(self, rgb, depth, n_grasps=1, show_output=False):
         predictions, save_name = self.predict(rgb,

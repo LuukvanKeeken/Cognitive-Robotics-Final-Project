@@ -254,7 +254,6 @@ class Environment:
             if difference < 0.01:
                 break
 
-
     def move_arm_away(self):
         joint = self.joints['shoulder_pan_joint']
         for _ in range(200):
@@ -442,6 +441,7 @@ class Environment:
             
         #self.wait_until_still(obj_id)
         self.update_obj_states()
+        return yaw
 
     def load_isolated_obj(self, path, mod_orn=False, mod_stiffness=False):
         r_x = random.uniform(
@@ -602,24 +602,35 @@ class Environment:
         self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()        
 
-    def create_packed(self, obj_info):
+    def create_packed(self, obj_info, exampleID, exampleOrn):
         init_x, init_y, init_z = self.obj_init_pos[0], self.obj_init_pos[1], self.Z_TABLE_TOP
+        
+        
         yaw = random.uniform(0, np.pi)
+        if exampleID == 0: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[0]
         center_obj, _, _ = self.load_obj(
             path, [init_x, init_y, init_z], yaw, mod_orn, mod_stiffness)
 
         margin = 0.25
+        
         yaw = random.uniform(0, np.pi)
+        if exampleID == 1: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[1]
         left_obj_id, _, _ = self.load_obj(path, [init_x-margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+        
         yaw = random.uniform(0, np.pi)
+        if exampleID == 2: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[2]
         top_obj_id, _, _ = self.load_obj(path, [init_x, init_y+margin, init_z], yaw, mod_orn, mod_stiffness)
+        
         yaw = random.uniform(0, np.pi)
+        if exampleID == 3: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[3]
         right_obj_id, _, _ = self.load_obj(path, [init_x+margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+        
         yaw = random.uniform(0, np.pi)
+        if exampleID == 4: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[4]
         down_obj_id, _, _ = self.load_obj(path, [init_x, init_y-margin, init_z], yaw, mod_orn, mod_stiffness)
 
@@ -630,7 +641,6 @@ class Environment:
         #self.move_obj_along_axis(right_obj_id, 0, '-', step, init_x)
         #self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()
-
 
     def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001):
         x, y, z, orn = action
@@ -690,7 +700,7 @@ class Environment:
             print('Failed to reach the target')
         return False, p.getLinkState(self.robot_id, self.eef_id)[0:2]
 
-    def grasp(self, pos: tuple, roll: float, gripper_opening_length: float, obj_height: float, debug: bool = False):
+    def grasp(self, pos: tuple, roll: float, gripper_opening_length: float, obj_height: float, debug: bool = False, wrongPrediction = False):
         """
         Method to perform grasp
         pos [x y z]: The axis in real-world coordinate
@@ -713,7 +723,7 @@ class Environment:
 
         #self.move_ee([x/2, y/2, self.GRIPPER_MOVING_HEIGHT, orn], positionAccuracy= 0.1 , rotationAccuracy= 2)
 
-        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.1, rotationAccuracy=0.1)
+        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.1, rotationAccuracy=0.01)
 
         # Reduce grip to get a tighter grip
         gripper_opening_length *= self.GRIP_REDUCTION
@@ -734,6 +744,30 @@ class Environment:
             grasped_obj_id = grasped_id[0]
         else:
             return succes_target, succes_grasp
+
+        if wrongPrediction:
+            #user_parameters = (0, -1.5446774605904932, 1.54, -1.54, -1.5707970583733368, 0.0009377758247187636, 0.085)
+            joint1 = self.joints["shoulder_lift_joint"]
+            joint2 = self.joints["elbow_joint"]
+            joint3 = self.joints["wrist_1_joint"]
+            for index in range(60):
+                p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=-3.14, force=400, maxVelocity=1000)
+                self.step_simulation()
+                p.setJointMotorControl2(self.robot_id, joint2.id, p.POSITION_CONTROL, targetPosition=0.0, force=400, maxVelocity=1000)
+                self.step_simulation()
+                p.setJointMotorControl2(self.robot_id, joint3.id, p.POSITION_CONTROL, targetPosition=-3.14, force=400, maxVelocity=1000)
+                self.step_simulation()
+
+                if index > 50:
+                    self.move_gripper(0.085)
+
+
+            #z = self.GRIPPER_MOVING_HEIGHT + 0.5
+            #self.move_ee([x, y, z, orn], withoutRotation=True, positionAccuracy= 0.1, rotationAccuracy = 3)
+            
+            for _ in range(5): self.step_simulation()
+            return succes_target, succes_grasp
+
 
         # Move object to target zone
         y_drop = self.TARGET_ZONE_POS[2] + z_offset + obj_height + 0.15
