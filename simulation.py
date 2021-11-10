@@ -177,6 +177,7 @@ class GrasppingScenarios():
             ## Write results to disk
             #self.data.write_json(self.network_model)
             #summarize(self.data.save_dir, runs, self.network_model)
+        print(f"failed segmented matches: {self.failedSegmentMatchCounter}")
 
     def debugTruthObject(self, matchingObjectID, foundObjects):
         truthPos, _ = p.getBasePositionAndOrientation(matchingObjectID)
