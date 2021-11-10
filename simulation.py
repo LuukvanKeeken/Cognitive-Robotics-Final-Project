@@ -229,7 +229,6 @@ class GrasppingScenarios():
         predictions, _, representation = generator.predict(rgb,
                                                            depth,
                                                            n_grasps=3)
-        #grasps, _ = generator.predict_grasp(rgb, depth, n_grasps=3, show_output=output)
         return predictions, representation
 
     def getSegments(self, rgb, depth):
@@ -269,7 +268,7 @@ class GrasppingScenarios():
             _, exampleRgb, exampleDepth = exampleSegments[0]
 
             _, exampleRepresentation = self.modelRepresentation(
-                generator, fullExampleRgb, fullExampleDepth)
+                generator, exampleRgb, exampleDepth)
 
             # Next, capture an image with the objects camera, segment image and calculate several representations
             pileBgr, pileDepth, _ = camera.get_cam_img()
