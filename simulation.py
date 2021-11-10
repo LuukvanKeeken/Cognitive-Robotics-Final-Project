@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import time
 from random import randrange
 from segmenter import Segmenter
-
+import torch
 
 
 class GrasppingScenarios():
@@ -95,8 +95,9 @@ class GrasppingScenarios():
         
         generator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
         exampleGenerator = GraspGenerator(self.network_path, exampleCamera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
-        
+        faults = 0
         objects.shuffle_objects()
+        runs = 10
         for i in range(runs):
             print("----------- run ", i+1, " -----------")
             print ("network model = ", self.network_model)
@@ -120,11 +121,15 @@ class GrasppingScenarios():
             self.env.create_packed(info)
 
             matchingObjectID = self.env.obj_ids[exampleObjectNumber+1]
-            self.graspExampleFromObjectsExperiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, camera, generator, i, vis, matchingObjectID)
+            if not self.graspExampleFromObjectsExperiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, camera, generator, i, vis, matchingObjectID):
+                faults +=1
+
+    
 
             ## Write results to disk
             #self.data.write_json(self.network_model)
             #summarize(self.data.save_dir, runs, self.network_model)
+        print(faults)
     
     def debugTruthObject(self,matchingObjectID, foundObjects):
         truthPos, _ = p.getBasePositionAndOrientation(matchingObjectID)
@@ -144,13 +149,37 @@ class GrasppingScenarios():
         return closestID
 
 
-    def matchExampleWithObjectReprentation(exampleRepresentation, foundObjects):
-        return 1
+    def matchExampleWithObjectRepresentation(self, exampleRepresentation, foundObjects, realSegmentID):
+        """
+            function should return the index of foundObjects
+
+        """
+        distances = []
+        for index, object in enumerate(foundObjects):
+            representation = object[1]
+            difference = torch.dist(exampleRepresentation, representation)
+            #sumDifference = torch.sum(difference)
+            #distance = math.sqrt(sumDifference)
+            distances.append(difference)
+
+        predictedSegmentID = int(np.argmin(np.array(distances)))
+        if predictedSegmentID != realSegmentID:
+            print()
+
+        #representations = []
+        #for index, object in enumerate(foundObjects):
+        #    representations.append(object[1])
+
+        #min_idx = torch.norm(exampleRepresentation - representations, dim=1).argmin()
+        #if predictedSegmentID != min_idx:
+        #    print()
+
+        return predictedSegmentID
+
     
     def modelRepresentation(self, generator, rgb, depth):
-        predictions, _ = generator.predict(rgb, depth, n_grasps=3)        
+        predictions, _, representation = generator.predict(rgb, depth, n_grasps=3)        
         #grasps, _ = generator.predict_grasp(rgb, depth, n_grasps=3, show_output=output)
-        representation = 0
         return predictions, representation 
 
     def getSegments(self,rgb, depth):
@@ -175,12 +204,16 @@ class GrasppingScenarios():
             # First, capture an image with the example camera, and calculate its representation
             fullExampleBgr, fullExampleDepth, _ = exampleCamera.get_cam_img()
             fullExampleRgb = cv2.cvtColor(fullExampleBgr, cv2.COLOR_BGR2RGB)
+            
+            # change segmentation to 1 segment
             exampleSegments =  segmenter.get_segmentations(fullExampleRgb, fullExampleDepth)
             if len(exampleSegments) != 1: 
                 number_of_failures += 1
                 #break
-            _, exampleRgb, exampleDepth = exampleSegments[0]               
-            #_, exampleRepresentation = self.modelRepresentation(exampleRgb,exampleDepth)
+            _, exampleRgb, exampleDepth = exampleSegments[0]
+
+
+            _, exampleRepresentation = self.modelRepresentation(generator, fullExampleRgb, fullExampleDepth)
 
             # Next, capture an image with the objects camera, segment image and calculate several representations
             pileBgr, pileDepth, _ = camera.get_cam_img()
@@ -207,13 +240,17 @@ class GrasppingScenarios():
                 foundObjects.append([grasps, representation])
 
             # For each object representation, match it with the sample object representation
-            #predictedSegmentID = self.matchExampleWithObjectReprentation(exampleRepresentation, foundObjects)
             realSegmentID = self.debugTruthObject(matchingObjectID, foundObjects)
-            predictedSegmentID = realSegmentID
+            predictedSegmentID = int(self.matchExampleWithObjectRepresentation(exampleRepresentation, foundObjects, realSegmentID))
+            
+            #predictedSegmentID = realSegmentID
             if realSegmentID != predictedSegmentID:
+                return False
+            else:
+                return True
                 failedSegmentMatchCounter += 1
                 break
-
+ 
             grasps, _  = foundObjects[predictedSegmentID]
 
             if (grasps == []):

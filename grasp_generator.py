@@ -193,7 +193,7 @@ class GraspGenerator:
             plot.clf()
 
         grasps = detect_grasps(q_img, ang_img, width_img=width_img, no_grasps=n_grasps)
-        return grasps, save_name
+        return grasps, save_name, internal
 
     def predict_grasp(self, rgb, depth, n_grasps=1, show_output=False):
         predictions, save_name = self.predict(rgb, depth, n_grasps=n_grasps, show_output=show_output)
