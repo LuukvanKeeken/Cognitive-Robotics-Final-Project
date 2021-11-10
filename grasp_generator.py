@@ -13,6 +13,7 @@ from network.utils.dataset_processing.grasp import detect_grasps
 from skimage.filters import gaussian
 import os
 import cv2
+from torch import nn
 
 class GraspGenerator:
     IMG_WIDTH = 224
@@ -33,7 +34,10 @@ class GraspGenerator:
             self.net = torch.load(net_path, map_location='cpu')
             self.device = get_device(force_cpu=True)
 
-        #print (self.net)
+        if network == 'GR_ConvNet':
+            self.internal_representation = nn.Sequential(*list(self.net.children())[:-13])
+        else:
+            print('Other networks not supported yet!')
 
         
         self.near = camera.near
@@ -150,7 +154,10 @@ class GraspGenerator:
             if (self.network == 'GR_ConvNet'):
                 ##### GR-ConvNet #####
                 pred = self.net.predict(xc)
-                # print (pred)
+                internal = self.internal_representation(xc)
+                print('\n--------------------------------------------------------------------')
+                print(internal)
+                print('--------------------------------------------------------------------\n')
                 pixels_max_grasp = int(self.MAX_GRASP * self.PIX_CONVERSION)
                 q_img, ang_img, width_img = self.post_process_output(pred['pos'],
                                                                 pred['cos'],
