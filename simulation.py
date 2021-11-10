@@ -247,6 +247,7 @@ class GrasppingScenarios():
         failed_grasp_counter = 0
         failedSegmentMatchCounter = 0
         finished = False
+        #TODO waarom wordt deze gemaakt, en hieronder "segmenter" in elke loop?
         segmentercode = Segmenter()
 
         while self.is_there_any_object(camera) and self.is_there_any_object(
@@ -259,7 +260,7 @@ class GrasppingScenarios():
 
             # change segmentation to 1 segment
             exampleSegments = segmenter.get_segmentations(
-                fullExampleRgb, fullExampleDepth)
+                fullExampleRgb, fullExampleDepth, 1)
             if len(exampleSegments) != 1:
                 number_of_failures += 1
                 #break
@@ -272,7 +273,7 @@ class GrasppingScenarios():
             pileBgr, pileDepth, _ = camera.get_cam_img()
             pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
 
-            pileSegments = segmenter.get_segmentations(pileRgb, pileDepth)
+            pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, 5)
             if len(pileSegments) == 0:
                 number_of_failures += 1
                 break
