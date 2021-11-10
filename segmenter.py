@@ -35,18 +35,18 @@ class Segmenter:
         return new_depth_image, new_rgb_image
 
 
-    def find_clusters(self):
+    def find_clusters(self, n_clusters):
         """
         Method that clusters the data (of which the table data is already
           removed) using k-means clustering. Labels for each point, clusters 
           of points, and the corresponding cluster centers are saved.
         """
-        kmeans = KMeans(n_clusters=5, random_state=0).fit(self.data_for_clustering)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(self.data_for_clustering)
         a_x = []
         a_y = []
         self.labels = kmeans.labels_
         self.cluster_centers = kmeans.cluster_centers_
-        self.clusters = [[] for i in range(5)]
+        self.clusters = [[] for i in range(n_clusters)]
         for i in range(len(self.data_for_clustering)):
             a_x.append(self.data_for_clustering[i][0])
             a_y.append(self.data_for_clustering[i][1])
@@ -54,16 +54,22 @@ class Segmenter:
         
 
 
-    def get_segmentations(self, rgb_image, depth_image):
+    def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
         Central method for coordinating the segmentation process. Firstly,
         the points beloning to objects (and not the table) are identified.
         This data is then clustered. For each cluster, a new depth image
         and a new rgb image is then created, with the cluster at the center
-        and the rest of the object data removed.
+        and the rest of the object data removed. For each cluster, the cluster center
+        is also returned. This is a 6-dimensional vector, containing the x and y
+        pixel coordinates of the cluster center in the original picture, the depth
+        of the cluster center, and the rgb values of the cluster center. Note, these
+        depth and rgb values are not the values in the original images at that (x,y)
+        location, but rather the calculted centers in depth and rgb space.
 
+        n_clusters: the number of clusters that should be found in this image.
         rgb_image: original rgb image as taken by the robot, containing
-          5 objects.
+          n_clusters objects.
         depth_image: the corresponding depth image.
         """
 
@@ -74,17 +80,17 @@ class Segmenter:
 
         self.find_clusters()
 
-        self.translated_clusters = [[] for i in range(5)]
+        self.translated_clusters = [[] for i in range(n_clusters)]
         self.new_depth_images = []
         self.new_rgb_images = []
-        for i in range(5):
+        for i in range(n_clusters):
             self.translated_clusters[i] = self.translate_clusters(self.clusters[i], self.cluster_centers[i])
             new_depth_image, new_rgb_image = self.create_new_images(self.translated_clusters[i], self.clusters[i])
             self.new_depth_images.append(new_depth_image)
             self.new_rgb_images.append(new_rgb_image)
 
         segmentations = []
-        for i in range(5):
+        for i in range(n_clusters):
             segmentations.append([self.cluster_centers[i], self.new_rgb_images[i], self.new_depth_images[i]])
 
         return segmentations
