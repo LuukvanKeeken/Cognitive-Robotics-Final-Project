@@ -24,17 +24,12 @@ class Segmenter:
         cluster: points of the cluster.
         """
 
-        new_depth_image = np.full_like(self.depth_image,
-                                       self.depth_image[0][0])
+        new_depth_image = np.full_like(self.depth_image, self.depth_image[0][0])
         new_rgb_image = np.full_like(self.rgb_image, self.rgb_image[0][0])
 
         for i in range(len(translated_cluster)):
-            new_depth_image[translated_cluster[i][0]][
-                translated_cluster[i][1]] = self.depth_image[cluster[i][0],
-                                                             cluster[i][1]]
-            new_rgb_image[translated_cluster[i][0]][
-                translated_cluster[i][1]] = self.rgb_image[cluster[i][0],
-                                                           cluster[i][1]]
+            new_depth_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.depth_image[cluster[i][0], cluster[i][1]]
+            new_rgb_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.rgb_image[cluster[i][0], cluster[i][1]]
 
         return new_depth_image, new_rgb_image
 
@@ -54,9 +49,7 @@ class Segmenter:
         for i in range(len(self.data_for_clustering)):
             a_x.append(self.data_for_clustering[i][0])
             a_y.append(self.data_for_clustering[i][1])
-            self.clusters[self.labels[i]].append([
-                self.data_for_clustering[i][0], self.data_for_clustering[i][1]
-            ])
+            self.clusters[self.labels[i]].append([self.data_for_clustering[i][0], self.data_for_clustering[i][1]])
 
     def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
@@ -88,8 +81,7 @@ class Segmenter:
         self.new_depth_images = []
         self.new_rgb_images = []
         for i in range(n_clusters):
-            self.translated_clusters[i] = self.translate_clusters(
-                self.clusters[i], self.cluster_centers[i])
+            self.translated_clusters[i] = self.translate_clusters(self.clusters[i], self.cluster_centers[i])
             new_depth_image, new_rgb_image = self.create_new_images(
                 self.translated_clusters[i], self.clusters[i])
             self.new_depth_images.append(new_depth_image)

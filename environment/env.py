@@ -41,9 +41,11 @@ class Environment:
         self.finger_length = finger_length
 
         # define environment
-        self.physicsClient = p.connect(p.GUI if self.vis else p.DIRECT)
+        self.physicsClient = p.connect(p.GUI if self.vis else p.DIRECT)#, options = "--opengl2")
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -10)
+        p.setRealTimeSimulation(1) 
+
         self.planeID = p.loadURDF('plane.urdf')
         self.tableID = p.loadURDF('environment/urdf/objects/table.urdf',
                                   [0.0, -0.65, 0.76],
@@ -436,10 +438,6 @@ class Environment:
 
         pos = [r_x, r_y, self.Z_TABLE_TOP]
         obj_id, _, _ = self.load_obj(path, pos, yaw, mod_orn, mod_stiffness)
-        #for _ in range(100):
-        #    self.step_simulation()
-            
-        #self.wait_until_still(obj_id)
         self.update_obj_states()
         return yaw
 
@@ -524,7 +522,7 @@ class Environment:
 
             obj_id, _, _ = self.load_obj(
                 path, pos, yaw, mod_orn, mod_stiffness)
-            for _ in range(10):
+            for _ in range(1):
                 self.step_simulation()
             self.wait_until_still(obj_id, 30)
 
@@ -642,7 +640,7 @@ class Environment:
         #self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()
 
-    def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001):
+    def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001, useForce = 0):
         x, y, z, orn = action
         roll, pitch, yaw = p.getEulerFromQuaternion(orn)
 
@@ -672,8 +670,13 @@ class Environment:
                 joint = self.joints[name]
                 pose = joint_poses[i]
                 # control robot end-effector
+                if useForce == 0:
+                    jointForce = joint.maxForce
+                else:
+                    jointForce = useForce
+
                 p.setJointMotorControl2(self.robot_id, joint.id, p.POSITION_CONTROL,
-                                        targetPosition=pose, force=joint.maxForce,
+                                        targetPosition=pose, force=jointForce,
                                         maxVelocity=joint.maxVelocity if custom_velocity is None else custom_velocity * (i+1))
 
             self.step_simulation()
@@ -699,6 +702,98 @@ class Environment:
         if self.debug:
             print('Failed to reach the target')
         return False, p.getLinkState(self.robot_id, self.eef_id)[0:2]
+
+    def changePile(self, violence = 100000):
+        if violence > 100:
+            joint0 = self.joints["shoulder_pan_joint"]
+            for index in range(5):
+                    p.setJointMotorControl2(self.robot_id, joint0.id, p.POSITION_CONTROL, targetPosition=-1.57, force=1000, maxVelocity=1000)
+            for time in range(5):
+                #user_parameters = (0, -1.5446774605904932, 1.54, -1.54, -1.5707970583733368, 0.0009377758247187636, 0.085)
+                joint1 = self.joints["shoulder_lift_joint"]
+                joint2 = self.joints["elbow_joint"]
+                for index in range(8):
+                    p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=-2, force=violence, maxVelocity=violence)
+                    p.setJointMotorControl2(self.robot_id, joint2.id, p.POSITION_CONTROL, targetPosition=1.54, force=violence, maxVelocity=violence)
+                    self.step_simulation()
+                for index in range(8):
+                    p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=1, force=violence, maxVelocity=violence)
+                    p.setJointMotorControl2(self.robot_id, joint2.id, p.POSITION_CONTROL, targetPosition=1.54, force=violence, maxVelocity=violence)
+                    self.step_simulation()    
+            for _ in range(2): self.step_simulation()
+        else:
+            x = 0.0
+            y = -0.55
+            # linear movement
+            zStep = 1.3
+            zEnd = 1.03
+
+            roll = 0.0
+            pitch = np.pi/2
+
+            inPosition = False
+            stepSize = 0.005
+            fibrateGripper = True
+            openGripper = False
+            gripperStepSize = 0.01
+            gripperPos = 0.085
+
+            rotate = True
+            forward = True
+            maxForward = np.pi/2 + 0.5
+            maxBackward = np.pi/2 - 0.5
+
+            pitchStep = 0.1
+
+            while not inPosition:
+                zStep -= stepSize
+                if zStep < zEnd:
+                    zStep = zEnd
+                    inPosition = True
+
+                if rotate:
+                    if forward:
+                        pitch += pitchStep
+                    else:
+                        pitch -= pitchStep
+
+                if pitch >= maxForward:
+                    forward = False
+
+                if pitch <= maxBackward:
+                    forward = True
+
+                yaw = pitch - np.pi/2
+                roll = yaw
+
+                orn = p.getQuaternionFromEuler([roll, pitch, yaw]) 
+                self.move_ee([x, y, zStep, orn], positionAccuracy= 0.1, rotationAccuracy=0.15, custom_velocity = 10, useForce = 1000)
+                if fibrateGripper:
+                    if openGripper:
+                        gripperPos += gripperStepSize
+                    else:
+                        gripperPos -= gripperStepSize
+                    
+                    if gripperPos >= 0.085:
+                        openGripper = False
+
+                    if gripperPos <= 0.0:
+                        openGripper = True
+
+                    gripper_opening_length = np.clip(gripperPos, *self.gripper_open_limit)
+                    gripper_opening_angle = 0.715 - math.asin((gripper_opening_length - 0.010) / 0.1143)  # angle calculation
+            
+                    self.controlGripper(controlMode=p.POSITION_CONTROL,targetPosition=gripper_opening_angle)
+                
+                    #if openGripper:
+                    #    self.move_gripper(0.085)
+                    #    openGripper = False
+                    #else:
+                    #    self.move_gripper(0)
+                    #    openGripper = True
+                self.step_simulation()
+            self.move_gripper(0.085)   
+            self.reset_robot() 
 
     def grasp(self, pos: tuple, roll: float, gripper_opening_length: float, obj_height: float, debug: bool = False, wrongPrediction = False):
         """

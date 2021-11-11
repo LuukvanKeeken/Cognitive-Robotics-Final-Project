@@ -12,6 +12,7 @@ import pybullet as p
 import torch
 from tqdm import tqdm
 
+
 from environment.env import Environment
 from environment.utilities import Camera
 from grasp_generator import GraspGenerator
@@ -134,19 +135,22 @@ class GrasppingScenarios():
             self.env.reset_robot()
             self.env.remove_all_obj()
 
+            number_of_objects = 5
             # Init objects
             # Example object - RIGHT
             # Randomly select example object out of the 5 objects in the pack
-            exampleObjectNumber = randrange(0, 5)
+            exampleObjectNumber = randrange(0, number_of_objects)
             path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[exampleObjectNumber])
             exampleOrn = self.env.load_example_obj(path, mod_orn, mod_stiffness)
 
             exampleID = -1 #exampleObjectNumber
             
             # Pile of objects - LEFT
-            number_of_objects = 5
+            
             info = objects.get_n_first_obj_info(number_of_objects)
-            self.env.create_packed(info, exampleID, exampleOrn)
+            #self.env.create_packed(info, exampleID, exampleOrn)
+            self.env.create_pile(info)
+
 
             matchingObjectID = self.env.obj_ids[exampleObjectNumber + 1]
             self.graspExampleFromObjectsExperiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, camera, graspGenerator, objectMatchingModel, vis, matchingObjectID)
@@ -168,44 +172,125 @@ class GrasppingScenarios():
             distances.append(math.hypot(difX, difY))
         return int(np.argmin(np.array(distances)))
 
+    def getExampleRepresentation(self, segmenter, exampleCamera,objectMatchingModel):
+        # First, capture an image with the example camera, and calculate its representation
+        fullExampleBgr, fullExampleDepth, _ = exampleCamera.get_cam_img()
+        fullExampleRgb = cv2.cvtColor(fullExampleBgr, cv2.COLOR_BGR2RGB)
+        failed = False
+        # change segmentation to 1 segment
+        exampleSegments = segmenter.get_segmentations(fullExampleRgb, fullExampleDepth, 1)
+        if len(exampleSegments) != 1:
+            failed = True
+            exampleRepresentation = 0
+        else:
+            _, exampleRgb, exampleDepth = exampleSegments[0]
+            exampleRepresentation = objectMatchingModel.calculateRepresentation(exampleRgb)#, exampleDepth, n_grasps=3)
+        return exampleRepresentation, failed
+    
+    def createGrasp(self,graspGenerator : GraspGenerator, segmentRGB, segmentDepth, pileDepth, idx, posX = 0, posY = 0):
+        predictions, _ = graspGenerator.predict(segmentRGB, segmentDepth, n_grasps=3)
+        failed = False
+        grasps = []
+        for grasp in predictions:
+            x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, pileDepth, posX, posY)
+            #x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, segmentDepth, posX, posY)
+            grasps.append((x, y, z, roll, opening_len, obj_height))
+
+        if (grasps == []):
+            self.dummy_simulation_steps(1)
+            print("could not find a grasp point!")
+            failed = True
+            return 0,0,failed
+  
+        if (idx > len(grasps) - 1):
+            print("idx = ", idx)
+            if len(grasps) > 0:
+                idx = len(grasps) - 1
+            else:
+                failed = True
+                return 0,0,failed
+
+        if vis:
+            LID = []
+            for g in grasps:
+                LID = self.draw_predicted_grasp(g, color=[1, 0, 1], lineIDs=LID)
+            time.sleep(3.5)
+            self.remove_drawing(LID)
+            self.dummy_simulation_steps(10)
+
+        lineIDs = self.draw_predicted_grasp(grasps[idx])
+        return grasps[idx], lineIDs, failed
+
+    def manipulatePile(self, graspGenerator, pileRgb, pileDepth, idx, numberOfSegments):
+        removeOneObject = False
+        if removeOneObject: 
+            predictedGrasp,lineIDs, failed = self.createGrasp(graspGenerator, pileRgb, pileDepth, pileDepth, idx)
+            if failed:
+                return numberOfSegments
+
+            x, y, z, yaw, opening_len, obj_height = predictedGrasp
+            
+            self.env.grasp((x, y, z), yaw, opening_len, obj_height, wrongPrediction = True)
+            self.env.reset_robot()
+            if vis: self.remove_drawing(lineIDs)
+            numberOfSegments-=1
+        else:
+            self.env.changePile(violence = 1)
+            self.env.reset_robot()
+        return numberOfSegments
+        
+
+
+
     def graspExampleFromObjectsExperiment(self, obj_name, number_of_attempts, exampleCamera : Camera, camera : Camera, graspGenerator : GraspGenerator, objectMatchingModel : ObjectMatching, vis, matchingObjectID):
         number_of_failures = 0
         idx = 0  ## select the best grasp configuration
         failed_grasp_counter = 0
         finished = False
+        numberOfSegments = 5
 
         while self.is_there_any_object(camera) and self.is_there_any_object(exampleCamera) and number_of_failures < number_of_attempts and not finished:
             segmenter = Segmenter()
-            # First, capture an image with the example camera, and calculate its representation
-            fullExampleBgr, fullExampleDepth, _ = exampleCamera.get_cam_img()
-            fullExampleRgb = cv2.cvtColor(fullExampleBgr, cv2.COLOR_BGR2RGB)
-
-            # change segmentation to 1 segment
-            exampleSegments = segmenter.get_segmentations(fullExampleRgb, fullExampleDepth, 1)
-            if len(exampleSegments) != 1:
+            
+            # First, get the example representation
+            exampleRepresentation, failed = self.getExampleRepresentation(segmenter, exampleCamera, objectMatchingModel)
+            if failed:
                 number_of_failures += 1
                 break
-            _, exampleRgb, exampleDepth = exampleSegments[0]
-            exampleRepresentation = objectMatchingModel.calculateRepresentation(exampleRgb, exampleDepth, n_grasps=3)
 
             # Next, capture an image with the objects camera, segment image and calculate several representations
-            pileBgr, pileDepth, _ = camera.get_cam_img()
-            pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
+            manipulationAttempts = 0
+            predictedSegmentID = -1
+            while predictedSegmentID == -1 and manipulationAttempts < 1:
+                pileBgr, pileDepth, _ = camera.get_cam_img()
+                pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
+                # objectMatchingModel.createHeatMap(pileRgb, pileDepth, exampleRepresentation)
 
-            pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, 5)
-            if len(pileSegments) == 0:
-                number_of_failures += 1
-                break
+                pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, numberOfSegments)
+                if len(pileSegments) == 0:
+                    number_of_failures += 1
+                    break
 
-            objectRepresentations = []
-            for _, segment in enumerate(pileSegments):
-                _, segmentRGB, segmentDepth = segment
-                objectRepresentations.append(objectMatchingModel.calculateRepresentation(segmentRGB, segmentDepth, n_grasps=3))
+                objectRepresentations = []
+                for _, segment in enumerate(pileSegments):
+                    _, segmentRGB, segmentDepth = segment
+                    objectRepresentations.append(objectMatchingModel.calculateRepresentation(segmentRGB))#, segmentDepth, n_grasps=3))
 
-            # For each object representation, match it with the sample object representation
-            realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
-            predictedSegmentID = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID)
-            
+                # For each object representation, match it with the sample object representation
+                realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
+                predictedSegmentID = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID)
+                #predictedSegmentID = realSegmentID
+                # is there is a match, escape from loop. Else, try manipulation
+
+                if predictedSegmentID != -1:
+                    break
+                if manipulationAttempts >=1:
+                    number_of_failures +=1
+                
+                manipulationAttempts +=1
+                numberOfSegments = self.manipulatePile(graspGenerator, pileRgb, pileDepth, idx, numberOfSegments)
+
+
             if realSegmentID != predictedSegmentID:
                 wrongPrediction = True
                 self.failedSegmentMatchCounter += 1
@@ -216,43 +301,16 @@ class GrasppingScenarios():
             posX = int(pos[0]) - 111
             posY = int(pos[1]) - 111
 
-            predictions, _ = graspGenerator.predict(segmentRGB, segmentDepth, n_grasps=3)
-
-            grasps = []
-            for grasp in predictions:
-                x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, pileDepth, posX, posY)
-                #x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, segmentDepth, posX, posY)
-                grasps.append((x, y, z, roll, opening_len, obj_height))
-
-            if (grasps == []):
-                self.dummy_simulation_steps(1)
-                print("could not find a grasp point!")
+            predictedGrasp,lineIDs, failed = self.createGrasp(graspGenerator, segmentRGB, segmentDepth, pileDepth, idx, posX, posY)
+            if failed:
+                number_of_failures += 1
                 if failed_grasp_counter > 3:
-                    print("Failed to find a grasp points > 3 times. Skipping.")
+                    failed_grasp_counter += 1
                     break
-                failed_grasp_counter += 1
                 continue
 
-            if (idx > len(grasps) - 1):
-                print("idx = ", idx)
-                if len(grasps) > 0:
-                    idx = len(grasps) - 1
-                else:
-                    number_of_failures += 1
-                    continue
+            x, y, z, yaw, opening_len, obj_height = predictedGrasp
 
-            if vis:
-                LID = []
-                for g in grasps:
-                    LID = self.draw_predicted_grasp(g, color=[1, 0, 1], lineIDs=LID)
-                time.sleep(3.5)
-                self.remove_drawing(LID)
-                self.dummy_simulation_steps(10)
-                #return
-
-            lineIDs = self.draw_predicted_grasp(grasps[idx])
-
-            x, y, z, yaw, opening_len, obj_height = grasps[idx]
             succes_grasp, succes_target = self.env.grasp((x, y, z), yaw, opening_len, obj_height, wrongPrediction = wrongPrediction)
 
             self.data.add_try(obj_name)
@@ -263,8 +321,7 @@ class GrasppingScenarios():
                 self.data.add_succes_target(obj_name)
 
             ## remove visualized grasp configuration
-            if vis:
-                self.remove_drawing(lineIDs)
+            if vis: self.remove_drawing(lineIDs)
 
             self.env.reset_robot()
 
