@@ -113,6 +113,8 @@ class GraspGenerator:
         # Get minimum depth value from selected area
         z_p = np.amin(depth_values)
 
+
+
         # Convert pixels to meters
         x_p /= self.PIX_CONVERSION
         y_p /= self.PIX_CONVERSION

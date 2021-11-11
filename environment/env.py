@@ -720,9 +720,6 @@ class Environment:
         orn = p.getQuaternionFromEuler([roll, np.pi/2, 0.0])    
 
         
-
-        #self.move_ee([x/2, y/2, self.GRIPPER_MOVING_HEIGHT, orn], positionAccuracy= 0.1 , rotationAccuracy= 2)
-
         self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.1, rotationAccuracy=0.01)
 
         # Reduce grip to get a tighter grip
@@ -730,8 +727,22 @@ class Environment:
 
         # Grasp and lift object
         z_offset = self.calc_z_offset(gripper_opening_length)
-        self.move_ee([x, y, z + z_offset, orn])
-        # self.move_gripper(gripper_opening_length)
+        
+        # linear movement
+        zStep = self.GRIPPER_MOVING_HEIGHT
+        zEnd = z + z_offset
+        inPosition = False
+        stepSize = 0.01
+        while not inPosition:
+            zStep -= stepSize
+            if zStep < zEnd:
+                zStep = zEnd
+                inPosition = True
+            self.move_ee([x, y, zStep, orn], positionAccuracy= stepSize, rotationAccuracy=0.01)
+        
+
+        #self.move_ee([x, y, z + z_offset, orn])
+
         self.auto_close_gripper(check_contact=True)
         for _ in range(40):
             self.step_simulation()
@@ -750,22 +761,15 @@ class Environment:
             joint1 = self.joints["shoulder_lift_joint"]
             joint2 = self.joints["elbow_joint"]
             joint3 = self.joints["wrist_1_joint"]
-            for index in range(60):
-                p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=-3.14, force=400, maxVelocity=1000)
+            for index in range(8):
+                p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=-1.5, force=400, maxVelocity=1000)
                 self.step_simulation()
                 p.setJointMotorControl2(self.robot_id, joint2.id, p.POSITION_CONTROL, targetPosition=0.0, force=400, maxVelocity=1000)
                 self.step_simulation()
                 p.setJointMotorControl2(self.robot_id, joint3.id, p.POSITION_CONTROL, targetPosition=-3.14, force=400, maxVelocity=1000)
                 self.step_simulation()
-
-                if index > 50:
-                    self.move_gripper(0.085)
-
-
-            #z = self.GRIPPER_MOVING_HEIGHT + 0.5
-            #self.move_ee([x, y, z, orn], withoutRotation=True, positionAccuracy= 0.1, rotationAccuracy = 3)
-            
-            for _ in range(5): self.step_simulation()
+                if index > 7: self.move_gripper(0.085)
+            for _ in range(2): self.step_simulation()
             return succes_target, succes_grasp
 
 
@@ -775,8 +779,9 @@ class Environment:
         y_orn = p.getQuaternionFromEuler([0, np.pi/2, 0.0])
 
         #self.move_arm_away()
-        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], 1.25, y_orn], positionAccuracy= 0.1, rotationAccuracy = 3)
+        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], 1.25, y_orn], positionAccuracy= 0.1, rotationAccuracy = 3)       
         self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], y_drop, y_orn], positionAccuracy= 0.1, rotationAccuracy = 0.1)
+        
         for _ in range(10): self.step_simulation()
         self.move_gripper(0.085)
         for _ in range(10): self.step_simulation()

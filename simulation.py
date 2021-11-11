@@ -220,7 +220,8 @@ class GrasppingScenarios():
 
             grasps = []
             for grasp in predictions:
-                x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, segmentDepth, posX, posY)
+                x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, pileDepth, posX, posY)
+                #x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, segmentDepth, posX, posY)
                 grasps.append((x, y, z, roll, opening_len, obj_height))
 
             if (grasps == []):
@@ -291,7 +292,7 @@ def parse_args():
                         help='Grasping scenario (isolated/packed/pile)')
     parser.add_argument('--network',
                         type=str,
-                        default='CGR_ConvNet',
+                        default='GR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
 
     parser.add_argument('--runs',
