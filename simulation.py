@@ -1,3 +1,6 @@
+import ctypes
+import pathlib
+
 import argparse
 import math
 import os
@@ -21,22 +24,42 @@ from segmenter import Segmenter
 from utils import IsolatedObjData, PackPileData, YcbObjects, summarize
 
 
-class GrasppingScenarios():
-    def __init__(self, network_model="GGCNN"):
 
-        self.network_model = network_model
+
+class GrasppingScenarios():
+    def __init__(self, grasp_network_model="GR_ConvNet", matching_network_model = 'mobileNetV2'):
+
+        self.grasp_network_model = grasp_network_model
+        self.matching_network_model = matching_network_model
         self.failedSegmentMatchCounter = 0
 
-        if (network_model == "GR_ConvNet"):
+        if (grasp_network_model == "GR_ConvNet"):
             ##### GR-ConvNet #####
             self.IMG_SIZE = 224
-            self.network_path = 'trained_models/GR_ConvNet/cornell-randsplit-rgbd-grconvnet3-drop1-ch32/epoch_19_iou_0.98'
+            self.grasp_network_path = 'trained_models/GR_ConvNet/cornell-randsplit-rgbd-grconvnet3-drop1-ch32/epoch_19_iou_0.98'
             sys.path.append('trained_models/GR_ConvNet')
-        elif (network_model == "CGR_ConvNet"):
+        elif (grasp_network_model == "CGR_ConvNet"):
             ##### CGR-ConvNet #####
             self.IMG_SIZE = 224
-            self.network_path = 'trained_models/3D_GDM-RSON/CNN/pretrained_model/model1'
+            self.grasp_network_path = 'trained_models/3D_GDM-RSON/CNN/pretrained_model/model1'
             sys.path.append('trained_models/3D_GDM-RSON')
+        else:
+            print("The selected network has not been implemented yet!")
+            exit()
+
+        if (matching_network_model == "GR_ConvNet"):
+            ##### GR-ConvNet #####
+            self.IMG_SIZE = 224
+            self.matching_network_path = 'trained_models/GR_ConvNet/cornell-randsplit-rgbd-grconvnet3-drop1-ch32/epoch_19_iou_0.98'
+            sys.path.append('trained_models/GR_ConvNet')
+        elif (matching_network_model == "CGR_ConvNet"):
+            ##### CGR-ConvNet #####
+            self.IMG_SIZE = 224
+            self.matching_network_path = 'trained_models/3D_GDM-RSON/CNN/pretrained_model/model1'
+            sys.path.append('trained_models/3D_GDM-RSON')
+        elif (matching_network_model == 'mobileNetV2'):
+            self.IMG_SIZE = 224
+            self.matching_network_path = ''
         else:
             print("The selected network has not been implemented yet!")
             exit()
@@ -125,8 +148,8 @@ class GrasppingScenarios():
 
         self.env = Environment(camera, exampleCamera, vis=vis, debug=debug, finger_length=0.06)
 
-        graspGenerator = GraspGenerator(self.network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.network_model, device)
-        objectMatchingModel = ObjectMatching(self.network_path, self.network_model, device)
+        graspGenerator = GraspGenerator(self.grasp_network_path, camera, self.depth_radius, self.fig, self.IMG_SIZE, self.grasp_network_model, device)
+        objectMatchingModel = ObjectMatching(self.matching_network_path, self.matching_network_model, device)
 
         for i in tqdm(range(runs)):
             objects.shuffle_objects()
@@ -171,7 +194,7 @@ class GrasppingScenarios():
             distances.append(math.hypot(difX, difY))
         return int(np.argmin(np.array(distances)))
 
-    def getExampleRepresentation(self, segmenter, exampleCamera,objectMatchingModel):
+    def getExampleRepresentation(self, segmenter : Segmenter, exampleCamera : Camera,objectMatchingModel : ObjectMatching):
         # First, capture an image with the example camera, and calculate its representation
         fullExampleBgr, fullExampleDepth, _ = exampleCamera.get_cam_img()
         fullExampleRgb = cv2.cvtColor(fullExampleBgr, cv2.COLOR_BGR2RGB)
@@ -183,7 +206,7 @@ class GrasppingScenarios():
             exampleRepresentation = 0
         else:
             _, exampleRgb, exampleDepth = exampleSegments[0]
-            exampleRepresentation = objectMatchingModel.calculateMobileNetRepresentation(exampleRgb)#, exampleDepth, n_grasps=3)
+            exampleRepresentation = objectMatchingModel.calculateRepresentation(exampleRgb, exampleDepth)
         return exampleRepresentation, failed
     
     def createGrasp(self,graspGenerator : GraspGenerator, segmentRGB, segmentDepth, pileDepth, idx, posX = 0, posY = 0):
@@ -237,9 +260,6 @@ class GrasppingScenarios():
             self.env.reset_robot()
         return numberOfSegments
         
-
-
-
     def graspExampleFromObjectsExperiment(self, obj_name, number_of_attempts, exampleCamera : Camera, camera : Camera, graspGenerator : GraspGenerator, objectMatchingModel : ObjectMatching, vis, matchingObjectID):
         number_of_failures = 0
         idx = 0  ## select the best grasp configuration
@@ -272,7 +292,7 @@ class GrasppingScenarios():
                 objectRepresentations = []
                 for _, segment in enumerate(pileSegments):
                     _, segmentRGB, segmentDepth = segment
-                    objectRepresentations.append(objectMatchingModel.calculateMobileNetRepresentation(segmentRGB))#, segmentDepth, n_grasps=3))
+                    objectRepresentations.append(objectMatchingModel.calculateRepresentation(segmentRGB, segmentDepth))#, segmentDepth, n_grasps=3))
 
                 # For each object representation, match it with the sample object representation
                 realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
@@ -347,15 +367,14 @@ class GrasppingScenarios():
 def parse_args():
     parser = argparse.ArgumentParser(description='Grasping demo')
 
-    parser.add_argument('--scenario',
+    parser.add_argument('--graspingNetwork',
                         type=str,
-                        default='twotable',
-                        help='Grasping scenario (isolated/packed/pile)')
-    parser.add_argument('--network',
-                        type=str,
-                        default='GR_ConvNet',
+                        default='CGR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
-
+    parser.add_argument('--matchingNetwork',
+                        type=str,
+                        default='mobileNetV2',
+                        help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--runs',
                         type=int,
                         default=10,
@@ -389,6 +408,13 @@ def parse_args():
 
 if __name__ == '__main__':
 
+    #testlib = pathlib.Path().absolute()/ "testC.so"
+    #c_lib = ctypes.CDLL(testlib)
+
+    #x, y = 6, 2.3
+    #answer = c_lib.cmult(x, ctypes.c_float(y))
+    #print(answer)
+
     args = parse_args()
     output = args.output
     runs = args.runs
@@ -397,7 +423,6 @@ if __name__ == '__main__':
     vis = args.vis
     report = args.report
 
-    grasp = GrasppingScenarios(args.network)
+    grasp = GrasppingScenarios(args.graspingNetwork, args.matchingNetwork)
 
-    if args.scenario == 'twotable':
-        grasp.graspExampleFromObjectsScenario(runs, device, vis, debug=False)
+    grasp.graspExampleFromObjectsScenario(runs, device, vis, debug=False)

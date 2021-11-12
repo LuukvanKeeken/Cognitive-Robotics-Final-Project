@@ -1,17 +1,10 @@
 import os
 from datetime import datetime
-
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import torch.utils.data
-from numpy.lib.npyio import save
-from PIL import Image
 from skimage.filters import gaussian
-from torch import nn
-
 from network.hardware.device import get_device
-#from network.inference.post_process import post_process_output
 from network.utils.data.camera_data import CameraData
 from network.utils.dataset_processing.grasp import detect_grasps
 from network.utils.visualisation.plot import plot_results
@@ -113,8 +106,6 @@ class GraspGenerator:
         # Get minimum depth value from selected area
         z_p = np.amin(depth_values)
 
-
-
         # Convert pixels to meters
         x_p /= self.PIX_CONVERSION
         y_p /= self.PIX_CONVERSION
@@ -129,8 +120,7 @@ class GraspGenerator:
 
         # Change direction of the angle and rotate by alpha rad
         roll = grasp.angle * -1 + (self.IMG_ROTATION)
-        if roll < -np.pi / 2:
-            roll += np.pi
+        if roll < -np.pi / 2: roll += np.pi
 
         # Covert pixel width to gripper width
         opening_length = (grasp.length / int(
@@ -238,13 +228,9 @@ class GraspGenerator:
             img_data = CameraData(width=self.IMG_WIDTH, height=self.IMG_WIDTH)
             x, depth_img, rgb_img = img_data.get_data(rgb=rgb, depth=depth)
         elif (self.network == 'GGCNN'):
-            x = torch.from_numpy(
-                depth.reshape(1, 1, self.IMG_WIDTH,
-                              self.IMG_WIDTH).astype(np.float32))
+            x = torch.from_numpy(depth.reshape(1, 1, self.IMG_WIDTH, self.IMG_WIDTH).astype(np.float32))
         else:
-            print(
-                "The selected network has not been implemented yet -- please choose another network!"
-            )
+            print("The selected network has not been implemented yet -- please choose another network!")
             exit()
 
         with torch.no_grad():
