@@ -142,7 +142,6 @@ class GrasppingScenarios():
             exampleObjectNumber = randrange(0, number_of_objects)
             path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[exampleObjectNumber])
             exampleOrn = self.env.load_example_obj(path, mod_orn, mod_stiffness)
-
             exampleID = -1 #exampleObjectNumber
             
             # Pile of objects - LEFT
@@ -184,7 +183,7 @@ class GrasppingScenarios():
             exampleRepresentation = 0
         else:
             _, exampleRgb, exampleDepth = exampleSegments[0]
-            exampleRepresentation = objectMatchingModel.calculateRepresentation(exampleRgb)#, exampleDepth, n_grasps=3)
+            exampleRepresentation = objectMatchingModel.calculateMobileNetRepresentation(exampleRgb)#, exampleDepth, n_grasps=3)
         return exampleRepresentation, failed
     
     def createGrasp(self,graspGenerator : GraspGenerator, segmentRGB, segmentDepth, pileDepth, idx, posX = 0, posY = 0):
@@ -193,7 +192,6 @@ class GrasppingScenarios():
         grasps = []
         for grasp in predictions:
             x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, pileDepth, posX, posY)
-            #x, y, z, roll, opening_len, obj_height = graspGenerator.grasp_to_robot_frame(grasp, segmentDepth, posX, posY)
             grasps.append((x, y, z, roll, opening_len, obj_height))
 
         if (grasps == []):
@@ -221,21 +219,21 @@ class GrasppingScenarios():
         lineIDs = self.draw_predicted_grasp(grasps[idx])
         return grasps[idx], lineIDs, failed
 
-    def manipulatePile(self, graspGenerator, pileRgb, pileDepth, idx, numberOfSegments):
-        removeOneObject = False
+    def manipulatePile(self, graspGenerator, segmentRgb, segmentDepth, pileDepth, idx, numberOfSegments, posX = 0, posY = 0):
+        removeOneObject = True
         if removeOneObject: 
-            predictedGrasp,lineIDs, failed = self.createGrasp(graspGenerator, pileRgb, pileDepth, pileDepth, idx)
+            predictedGrasp,lineIDs, failed = self.createGrasp(graspGenerator, segmentRgb, segmentDepth, pileDepth, idx, posX, posY)
             if failed:
                 return numberOfSegments
 
             x, y, z, yaw, opening_len, obj_height = predictedGrasp
-            
-            self.env.grasp((x, y, z), yaw, opening_len, obj_height, wrongPrediction = True)
+        
+            _, succes_grasp = self.env.grasp((x, y, z), yaw, opening_len, obj_height, wrongPrediction = True)
             self.env.reset_robot()
             if vis: self.remove_drawing(lineIDs)
-            numberOfSegments-=1
+            if succes_grasp: numberOfSegments-=1
         else:
-            self.env.changePile(violence = 1)
+            self.env.changePile(violence = 10000)
             self.env.reset_robot()
         return numberOfSegments
         
@@ -261,7 +259,7 @@ class GrasppingScenarios():
             # Next, capture an image with the objects camera, segment image and calculate several representations
             manipulationAttempts = 0
             predictedSegmentID = -1
-            while predictedSegmentID == -1 and manipulationAttempts < 1:
+            while predictedSegmentID == -1 and manipulationAttempts < 3:
                 pileBgr, pileDepth, _ = camera.get_cam_img()
                 pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
                 # objectMatchingModel.createHeatMap(pileRgb, pileDepth, exampleRepresentation)
@@ -274,28 +272,34 @@ class GrasppingScenarios():
                 objectRepresentations = []
                 for _, segment in enumerate(pileSegments):
                     _, segmentRGB, segmentDepth = segment
-                    objectRepresentations.append(objectMatchingModel.calculateRepresentation(segmentRGB))#, segmentDepth, n_grasps=3))
+                    objectRepresentations.append(objectMatchingModel.calculateMobileNetRepresentation(segmentRGB))#, segmentDepth, n_grasps=3))
 
                 # For each object representation, match it with the sample object representation
                 realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
-                predictedSegmentID = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID)
-                #predictedSegmentID = realSegmentID
-                # is there is a match, escape from loop. Else, try manipulation
+                bestPredictedID, worstPredictedID, uncertain = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID)
 
-                if predictedSegmentID != -1:
+                # is there is a match, escape from loop. Else, try manipulation and start pile segmentation again
+                if not uncertain:
                     break
-                if manipulationAttempts >=1:
+
+                if manipulationAttempts >=3:
                     number_of_failures +=1
-                
                 manipulationAttempts +=1
-                numberOfSegments = self.manipulatePile(graspGenerator, pileRgb, pileDepth, idx, numberOfSegments)
 
+                pos, segmentRGB, segmentDepth = pileSegments[worstPredictedID]
+                posX = int(pos[0]-111)
+                posY = int(pos[1]-111)
+                numberOfSegments = self.manipulatePile(graspGenerator, segmentRGB, segmentDepth, pileDepth, idx, numberOfSegments, posX, posY)
 
+            
+            predictedSegmentID = bestPredictedID
             if realSegmentID != predictedSegmentID:
                 wrongPrediction = True
                 self.failedSegmentMatchCounter += 1
             else:
                 wrongPrediction = False
+
+            wrongPrediction = False #remove this line to let the robot to throw away a wrong object
 
             pos, segmentRGB, segmentDepth = pileSegments[predictedSegmentID]
             posX = int(pos[0]) - 111
