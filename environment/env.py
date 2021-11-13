@@ -643,6 +643,9 @@ class Environment:
     def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001, useForce = 0, jointDamping = True):
         x, y, z, orn = action
         roll, pitch, yaw = p.getEulerFromQuaternion(orn)
+        
+        lastXYZ = np.array((0, 0, 0))
+        lastOrn = np.array((0, 0, 0, 0))
 
         x = np.clip(x, *self.ee_position_limit[0])
         y = np.clip(y, *self.ee_position_limit[1])
@@ -651,6 +654,7 @@ class Environment:
         jd = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
         jd = jd * 0
         still_open_flag_ = True  # Hot fix
+        noMovement = 0
         for _ in range(max_step):
             if withoutRotation: 
                 real_xyz, real_xyzw = p.getLinkState(self.robot_id, self.eef_id)[0:2]
@@ -690,10 +694,23 @@ class Environment:
             posDifference = np.linalg.norm(np.array((x, y, z)) - real_xyz) 
             if withoutRotation: real_yaw = yaw
             rotationDifference = np.abs((roll - real_roll, pitch - real_pitch, yaw - real_yaw)).sum()
+            
             if posDifference < positionAccuracy and  rotationDifference < rotationAccuracy:
                 if verbose:
                     print('Reach target with', _, 'steps')
                 return True, (real_xyz, real_xyzw)
+            
+            movedXYZ = np.linalg.norm(np.array(lastXYZ) - np.array(real_xyz)) 
+            movedOrn = np.linalg.norm(np.array(lastOrn) - np.array(real_xyzw))
+            if movedXYZ < 0.001 and movedOrn < 0.001:   
+                if noMovement > 5:
+                    return False, (real_xyz, real_xyzw)
+                noMovement +=1
+            else:
+                noMovement = 0
+
+            lastXYZ = real_xyz
+            lastOrn = real_xyzw
 
         # raise FailToReachTargetError
         if self.debug:
@@ -841,7 +858,7 @@ class Environment:
         for _ in range(40):
             self.step_simulation()
         #self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn], positionAccuracy= 0.1, rotationAccuracy = 1)
-        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
+        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
         # If the object has been grasped and lifted off the table
         grasped_id = self.check_grasped_id()
         if len(grasped_id) == 1:
@@ -849,21 +866,33 @@ class Environment:
             grasped_obj_id = grasped_id[0]
         else:
             return succes_target, succes_grasp
-
+        
+        self.move_ee([0.2, -0.45, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.4, rotationAccuracy=2)
+        #wrongPrediction = True
         if wrongPrediction:
-            #user_parameters = (0, -1.5446774605904932, 1.54, -1.54, -1.5707970583733368, 0.0009377758247187636, 0.085)
-            joint1 = self.joints["shoulder_lift_joint"]
-            joint2 = self.joints["elbow_joint"]
-            joint3 = self.joints["wrist_1_joint"]
-            for index in range(8):
-                p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=-1.5, force=400, maxVelocity=1000)
-                self.step_simulation()
-                p.setJointMotorControl2(self.robot_id, joint2.id, p.POSITION_CONTROL, targetPosition=0.0, force=400, maxVelocity=1000)
-                self.step_simulation()
-                p.setJointMotorControl2(self.robot_id, joint3.id, p.POSITION_CONTROL, targetPosition=-3.14, force=400, maxVelocity=1000)
-                self.step_simulation()
-                if index > 7: self.move_gripper(0.085)
-            for _ in range(2): self.step_simulation()
+            throwAway = False
+            if throwAway:
+                #user_parameters = (0, -1.5446774605904932, 1.54, -1.54, -1.5707970583733368, 0.0009377758247187636, 0.085)
+                joint1 = self.joints["shoulder_lift_joint"]
+                joint2 = self.joints["elbow_joint"]
+                joint3 = self.joints["wrist_1_joint"]
+                for index in range(8):
+                    p.setJointMotorControl2(self.robot_id, joint1.id, p.POSITION_CONTROL, targetPosition=-1.5, force=400, maxVelocity=1000)
+                    self.step_simulation()
+                    p.setJointMotorControl2(self.robot_id, joint2.id, p.POSITION_CONTROL, targetPosition=0.0, force=400, maxVelocity=1000)
+                    self.step_simulation()
+                    p.setJointMotorControl2(self.robot_id, joint3.id, p.POSITION_CONTROL, targetPosition=-3.14, force=400, maxVelocity=1000)
+                    self.step_simulation()
+                    if index > 7: self.move_gripper(0.085)
+                for _ in range(2): self.step_simulation()
+            else:
+                self.move_ee([-0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.2, rotationAccuracy=0.4)
+                self.move_ee([-0.65, 0.0, self.GRIPPER_MOVING_HEIGHT-0.2, orn], positionAccuracy= 0.4, rotationAccuracy=0.4)
+                self.move_gripper(0.085)
+                self.move_ee([-0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.2, rotationAccuracy=2)
+                self.move_ee([0.0, -0.45, self.GRIPPER_MOVING_HEIGHT+0.1, orn],positionAccuracy= 0.1, rotationAccuracy=2)
+                self.move_ee([0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.2, rotationAccuracy=2)
+                
             return succes_target, succes_grasp
 
         # Move object to target zone
@@ -872,7 +901,7 @@ class Environment:
         y_orn = p.getQuaternionFromEuler([0, np.pi/2, 0.0])
 
         #self.move_arm_away()
-        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], 1.25, y_orn], positionAccuracy= 0.1, rotationAccuracy = 3)       
+        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], 1.25, y_orn], positionAccuracy= 0.1, rotationAccuracy = 3.14)       
         self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], y_drop, y_orn], positionAccuracy= 0.1, rotationAccuracy = 0.1)
         
         for _ in range(10): self.step_simulation()
