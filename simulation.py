@@ -305,7 +305,7 @@ class GrasppingScenarios():
                             segment = segmenter.get_segmentations(segmentRgbImage, segmentDepthImage, 1)[0]
                             pileSegments.append(segment)
                 else:
-                    pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, numberOfSegments)
+                    pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, "guess")
                     predictedNumberOfSegments = pileSegments
                 if len(pileSegments) == 0:
                     number_of_failures += 1
