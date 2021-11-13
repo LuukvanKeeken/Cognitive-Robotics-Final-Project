@@ -848,8 +848,7 @@ class Environment:
                 zStep = zEnd
                 inPosition = True
             success, _ = self.move_ee([x, y, zStep, orn], positionAccuracy= 0.02, rotationAccuracy=0.2, jointDamping=False)
-            if not success:
-                print()
+            # if not success: print()
         
 
         #self.move_ee([x, y, z + z_offset, orn])

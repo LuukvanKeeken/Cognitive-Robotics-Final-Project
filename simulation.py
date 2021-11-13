@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from random import randrange
+import csv
 
 import cv2
 import matplotlib.pyplot as plt
@@ -68,6 +69,7 @@ class GrasppingScenarios():
         self.fig = plt.figure(figsize=(10, 10))
         self.data = None
         self.env = None
+        self.experimentResults = []
 
     def draw_predicted_grasp(self, grasps, color=[0, 0, 1], lineIDs=[]):
         x, y, z, yaw, opening_len, obj_height = grasps
@@ -178,7 +180,8 @@ class GrasppingScenarios():
             ## Write results to disk
             #self.data.write_json(self.network_model)
             #summarize(self.data.save_dir, runs, self.network_model)
-        print(f"failed segmented matches: {self.failedSegmentMatchCounter}")
+        self.writeExperimentResults()
+        #print(f"failed segmented matches: {self.failedSegmentMatchCounter}")
 
     def debugTruthObject(self, matchingObjectID, pileSegments, depth_img, generator):
         truthPos, _ = p.getBasePositionAndOrientation(matchingObjectID)
@@ -267,6 +270,21 @@ class GrasppingScenarios():
                 debugID = p.addUserDebugText("failed", [-0.0, -0.9, 0.8], [0.5, 0, 0], textSize=2)
                 time.sleep(0.25)
                 p.removeUserDebugItem(debugID)
+
+    def writeExperimentResults(self):
+        if len(self.experimentResults) == 0:
+            print("no experiment results to write")
+            exit()
+        
+        header = ['run', 'numberOfFaultPredictedSegments', 'pileManipulations', 'wrongWorstPrediction', 'pileManipulationGraspFaults', 'correctObjectMatch', 'correctManipulations', 'correctGrasps', 'correctObjectManipulations']
+
+        with open('results.csv', 'w', encoding='UTF8', newline='') as f:
+            csvFile = csv.writer(f)   
+            csvFile.writerow(header)      
+            for index, result in enumerate(self.experimentResults):
+                result.insert(0, str(index))
+                csvFile.writerow(result)  
+
 
     def graspExampleFromObjectsExperiment(self, obj_name, number_of_attempts, exampleCamera : Camera, camera : Camera, graspGenerator : GraspGenerator, objectMatchingModel : ObjectMatching, vis, matchingObjectID):
         number_of_failures = 0
@@ -401,6 +419,8 @@ class GrasppingScenarios():
             else:
                 number_of_failures += 1
 
+        self.experimentResults.append([numberOfFaultPredictedSegments, pileManipulations, wrongWorstPrediction, pileManipulationGraspFaults, correctObjectMatch, correctManipulations, correctGrasps, correctObjectManipulations])
+        
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Grasping demo')
