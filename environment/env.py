@@ -640,7 +640,7 @@ class Environment:
         self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()
 
-    def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001, useForce = 0):
+    def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001, useForce = 0, jointDamping = True):
         x, y, z, orn = action
         roll, pitch, yaw = p.getEulerFromQuaternion(orn)
 
@@ -657,14 +657,11 @@ class Environment:
                 real_roll, real_pitch, real_yaw = p.getEulerFromQuaternion(real_xyzw)
                 orn = p.getQuaternionFromEuler([roll, pitch, real_yaw]) 
 
-            # apply IK
-            #lower limits for null space     
-            ll = [0.0,-3.14159265359, 0.001, -3.14159265359,-3.14159265359,-3.14159265359,-3.14159265359]
-            ul = [-1.0,3.14159265359, 0.001, 3.14159265359,3.14159265359,3.14159265359,3.14159265359]
-            jr = [5.8, 4, 5.8, 4, 5.8, 4, 6]
-            rp = [0, 0, 0, 0.5 * math.pi, 0, -math.pi * 0.5 * 0.66, 0]
-
-            joint_poses = p.calculateInverseKinematics(self.robot_id, self.eef_id, [x, y, z], orn, ll, ul, jr, rp ,maxNumIterations=100, jointDamping=jd)
+            if jointDamping:
+                joint_poses = p.calculateInverseKinematics(self.robot_id, self.eef_id, [x, y, z], orn ,maxNumIterations=100, jointDamping=jd)
+            else:
+                joint_poses = p.calculateInverseKinematics(self.robot_id, self.eef_id, [x, y, z], orn ,maxNumIterations=100)
+            
             # Filter out the gripper
             for i, name in enumerate(self.controlJoints[:-1]):
                 joint = self.joints[name]
@@ -809,13 +806,13 @@ class Environment:
         z -= self.finger_length
         z = np.clip(z, *self.ee_position_limit[2])
 
+ 
         # Move above target
         #self.reset_robot()
         self.move_gripper(0.1)
         orn = p.getQuaternionFromEuler([roll, np.pi/2, 0.0])    
 
-        
-        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.1, rotationAccuracy=0.01)
+        self.move_ee([0.0, -0.5, 1.4, orn],positionAccuracy= 0.4, rotationAccuracy=2)
 
         # Reduce grip to get a tighter grip
         gripper_opening_length *= self.GRIP_REDUCTION
@@ -833,7 +830,9 @@ class Environment:
             if zStep < zEnd:
                 zStep = zEnd
                 inPosition = True
-            self.move_ee([x, y, zStep, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
+            success, _ = self.move_ee([x, y, zStep, orn], positionAccuracy= 0.02, rotationAccuracy=0.2, jointDamping=False)
+            if not success:
+                print()
         
 
         #self.move_ee([x, y, z + z_offset, orn])
@@ -842,7 +841,7 @@ class Environment:
         for _ in range(40):
             self.step_simulation()
         #self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn], positionAccuracy= 0.1, rotationAccuracy = 1)
-        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT, orn])
+        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
         # If the object has been grasped and lifted off the table
         grasped_id = self.check_grasped_id()
         if len(grasped_id) == 1:
@@ -866,7 +865,6 @@ class Environment:
                 if index > 7: self.move_gripper(0.085)
             for _ in range(2): self.step_simulation()
             return succes_target, succes_grasp
-
 
         # Move object to target zone
         y_drop = self.TARGET_ZONE_POS[2] + z_offset + obj_height + 0.15
