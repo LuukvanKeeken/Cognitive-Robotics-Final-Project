@@ -168,8 +168,8 @@ class GrasppingScenarios():
             # Pile of objects - LEFT
             
             info = objects.get_n_first_obj_info(number_of_objects)
-            #self.env.create_packed(info, exampleID, exampleOrn)
-            self.env.create_pile(info)
+            self.env.create_packed(info, exampleID, exampleOrn)
+            # self.env.create_pile(info)
 
 
             matchingObjectID = self.env.obj_ids[exampleObjectNumber + 1]
@@ -283,7 +283,7 @@ class GrasppingScenarios():
                 pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
                 unique = np.unique(pileSegmentation)
                 trueNumberOfSegments = len(unique)
-                syntheticSegmenter = True
+                syntheticSegmenter = False
                 if syntheticSegmenter:
                     pileSegments = []
                     (unique, counts) = np.unique(pileSegmentation, return_counts=True)
@@ -399,7 +399,7 @@ def parse_args():
 
     parser.add_argument('--graspingNetwork',
                         type=str,
-                        default='CGR_ConvNet',
+                        default='GR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,

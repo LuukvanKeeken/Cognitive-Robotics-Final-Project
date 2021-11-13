@@ -43,19 +43,37 @@ class Segmenter:
           removed) using k-means clustering. Labels for each point, clusters
           of points, and the corresponding cluster centers are saved.
         """
-        kmeans = KMeans(n_clusters=n_clusters,
-                        random_state=0).fit(self.data_for_clustering)
-        a_x = []
-        a_y = []
-        self.labels = kmeans.labels_
-        self.cluster_centers = kmeans.cluster_centers_
-        self.clusters = [[] for i in range(n_clusters)]
-        for i in range(len(self.data_for_clustering)):
-            a_x.append(self.data_for_clustering[i][0])
-            a_y.append(self.data_for_clustering[i][1])
-            self.clusters[self.labels[i]].append([
-                self.data_for_clustering[i][0], self.data_for_clustering[i][1]
-            ])
+        if n_clusters == 1:
+
+            kmeans = KMeans(n_clusters=n_clusters,
+                            random_state=0).fit(self.data_for_clustering)
+            a_x = []
+            a_y = []
+            self.labels = kmeans.labels_
+            self.cluster_centers = kmeans.cluster_centers_
+            self.clusters = [[] for i in range(n_clusters)]
+            for i in range(len(self.data_for_clustering)):
+                a_x.append(self.data_for_clustering[i][0])
+                a_y.append(self.data_for_clustering[i][1])
+                self.clusters[self.labels[i]].append([
+                    self.data_for_clustering[i][0], self.data_for_clustering[i][1]
+                ])
+        else:
+            inertias = []
+            for i in range(1,7):
+                kmeans = KMeans(n_clusters=i,
+                                random_state=0).fit(self.data_for_clustering)
+                inertias.append(kmeans.inertia_)
+
+            inert_plot = plt.figure()
+            inert_plotax = inert_plot.add_subplot()
+            inert_plotax = sns.scatterplot(x= range(1,7), y= inertias)
+
+            second_deriv = []
+            for i in range(1,5):
+                print(str(i+1) + ": " + str(inertias[i+1] + inertias[i-1] - 2 * inertias[i]))
+            plt.show()
+            exit(0)
 
     def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
