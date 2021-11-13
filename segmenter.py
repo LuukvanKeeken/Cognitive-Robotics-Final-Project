@@ -19,17 +19,21 @@ class Segmenter:
           each point in the cluster. At the new coordinates (the translated points),
           the depth or rgb values of the old coordinates (in the original images) are
           inserted.
-
         translated_cluster: points of the cluster when translated to the center.
         cluster: points of the cluster.
         """
 
-        new_depth_image = np.full_like(self.depth_image, self.depth_image[0][0])
+        new_depth_image = np.full_like(self.depth_image,
+                                       self.depth_image[0][0])
         new_rgb_image = np.full_like(self.rgb_image, self.rgb_image[0][0])
 
         for i in range(len(translated_cluster)):
-            new_depth_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.depth_image[cluster[i][0], cluster[i][1]]
-            new_rgb_image[translated_cluster[i][0]][translated_cluster[i][1]] = self.rgb_image[cluster[i][0], cluster[i][1]]
+            new_depth_image[translated_cluster[i][0]][
+                translated_cluster[i][1]] = self.depth_image[cluster[i][0],
+                                                             cluster[i][1]]
+            new_rgb_image[translated_cluster[i][0]][
+                translated_cluster[i][1]] = self.rgb_image[cluster[i][0],
+                                                           cluster[i][1]]
 
         return new_depth_image, new_rgb_image
 
@@ -49,7 +53,9 @@ class Segmenter:
         for i in range(len(self.data_for_clustering)):
             a_x.append(self.data_for_clustering[i][0])
             a_y.append(self.data_for_clustering[i][1])
-            self.clusters[self.labels[i]].append([self.data_for_clustering[i][0], self.data_for_clustering[i][1]])
+            self.clusters[self.labels[i]].append([
+                self.data_for_clustering[i][0], self.data_for_clustering[i][1]
+            ])
 
     def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
@@ -63,7 +69,6 @@ class Segmenter:
         of the cluster center, and the rgb values of the cluster center. Note, these
         depth and rgb values are not the values in the original images at that (x,y)
         location, but rather the calculted centers in depth and rgb space.
-
         n_clusters: the number of clusters that should be found in this image.
         rgb_image: original rgb image as taken by the robot, containing
           n_clusters objects.
@@ -81,7 +86,8 @@ class Segmenter:
         self.new_depth_images = []
         self.new_rgb_images = []
         for i in range(n_clusters):
-            self.translated_clusters[i] = self.translate_clusters(self.clusters[i], self.cluster_centers[i])
+            self.translated_clusters[i] = self.translate_clusters(
+                self.clusters[i], self.cluster_centers[i])
             new_depth_image, new_rgb_image = self.create_new_images(
                 self.translated_clusters[i], self.clusters[i])
             self.new_depth_images.append(new_depth_image)
@@ -126,7 +132,6 @@ class Segmenter:
         """
         Method that calculates how much a cluster should be shifted
           for the cluster center to be at the center of the image (111, 111).
-
         cluster: set of point belonging to one cluster.
         cluster_center: the corresponding center of that cluster.
         """
