@@ -1,6 +1,4 @@
-import ctypes
 import pathlib
-
 import argparse
 import math
 import os
@@ -267,6 +265,8 @@ class GrasppingScenarios():
         finished = False
         numberOfSegments = 5
 
+        experimentResults = []
+
         while self.is_there_any_object(camera) and self.is_there_any_object(exampleCamera) and number_of_failures < number_of_attempts and not finished:
             segmenter = Segmenter()
             
@@ -275,16 +275,38 @@ class GrasppingScenarios():
             if failed:
                 number_of_failures += 1
                 break
-
+            
             # Next, capture an image with the objects camera, segment image and calculate several representations
             manipulationAttempts = 0
-            predictedSegmentID = -1
-            while predictedSegmentID == -1 and manipulationAttempts < 3:
-                pileBgr, pileDepth, _ = camera.get_cam_img()
+            while manipulationAttempts < 3:
+                pileBgr, pileDepth, pileSegmentation = camera.get_cam_img()
                 pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
-                # objectMatchingModel.createHeatMap(pileRgb, pileDepth, exampleRepresentation)
-
-                pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, numberOfSegments)
+                unique = np.unique(pileSegmentation)
+                trueNumberOfSegments = len(unique)
+                syntheticSegmenter = True
+                if syntheticSegmenter:
+                    pileSegments = []
+                    (unique, counts) = np.unique(pileSegmentation, return_counts=True)
+                    for segmentIndex, count in enumerate(counts):
+                        if count < 3000:
+                            segmentRgbImage = np.zeros([224,224,3],dtype=np.uint8)
+                            segmentRgbImage.fill(255)
+                            segmentDepthImage = np.zeros([224,224],dtype=np.float32)
+                            segmentDepthImage.fill(0.91182417)
+                            for i in range(224):
+                                for j in range(224):
+                                    pixel = pileSegmentation[i,j]
+                                    if pixel == unique[segmentIndex]:
+                                        rgbValue = pileRgb[i,j][:]
+                                        segmentRgbImage[i,j] = rgbValue
+                                        depthValue = pileDepth[i,j]
+                                        segmentDepthImage[i,j] = depthValue
+                            
+                            segment = segmenter.get_segmentations(segmentRgbImage, segmentDepthImage, 1)[0]
+                            pileSegments.append(segment)
+                else:
+                    pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, numberOfSegments)
+                    predictedNumberOfSegments = pileSegments
                 if len(pileSegments) == 0:
                     number_of_failures += 1
                     break
@@ -298,7 +320,10 @@ class GrasppingScenarios():
                 realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
                 bestPredictedID, worstPredictedID, uncertain = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID)
 
-                # is there is a match, escape from loop. Else, try manipulation and start pile segmentation again
+                # is there is a match, escape from loop. Else, try to remove the worst match
+
+
+
                 if not uncertain:
                     break
 
@@ -310,6 +335,11 @@ class GrasppingScenarios():
                 posX = int(pos[0]-111)
                 posY = int(pos[1]-111)
                 numberOfSegments = self.manipulatePile(graspGenerator, segmentRGB, segmentDepth, pileDepth, idx, numberOfSegments, posX, posY)
+
+                # results of 
+
+
+
 
             
             predictedSegmentID = bestPredictedID
@@ -407,14 +437,6 @@ def parse_args():
     return args
 
 if __name__ == '__main__':
-
-    #testlib = pathlib.Path().absolute()/ "testC.so"
-    #c_lib = ctypes.CDLL(testlib)
-
-    #x, y = 6, 2.3
-    #answer = c_lib.cmult(x, ctypes.c_float(y))
-    #print(answer)
-
     args = parse_args()
     output = args.output
     runs = args.runs
@@ -424,5 +446,4 @@ if __name__ == '__main__':
     report = args.report
 
     grasp = GrasppingScenarios(args.graspingNetwork, args.matchingNetwork)
-
     grasp.graspExampleFromObjectsScenario(runs, device, vis, debug=False)

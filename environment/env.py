@@ -833,7 +833,7 @@ class Environment:
             if zStep < zEnd:
                 zStep = zEnd
                 inPosition = True
-            self.move_ee([x, y, zStep, orn], positionAccuracy= stepSize, rotationAccuracy=0.01)
+            self.move_ee([x, y, zStep, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
         
 
         #self.move_ee([x, y, z + z_offset, orn])
