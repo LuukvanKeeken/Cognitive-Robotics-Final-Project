@@ -634,10 +634,10 @@ class Environment:
 
         self.wait_until_all_still()
         step = 0.01
-        self.move_obj_along_axis(left_obj_id, 0, '+', step, init_x)
-        self.move_obj_along_axis(top_obj_id, 1, '-', step, init_y)
-        self.move_obj_along_axis(right_obj_id, 0, '-', step, init_x)
-        self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
+        # self.move_obj_along_axis(left_obj_id, 0, '+', step, init_x)
+        # self.move_obj_along_axis(top_obj_id, 1, '-', step, init_y)
+        # self.move_obj_along_axis(right_obj_id, 0, '-', step, init_x)
+        # self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()
 
     def move_ee(self, action, max_step=300, check_collision_config=None, custom_velocity=None, try_close_gripper=False, verbose=False, withoutRotation = False, positionAccuracy = 0.001, rotationAccuracy = 0.001, useForce = 0, jointDamping = True):

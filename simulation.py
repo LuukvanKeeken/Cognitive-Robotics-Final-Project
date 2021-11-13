@@ -169,7 +169,7 @@ class GrasppingScenarios():
             
             info = objects.get_n_first_obj_info(number_of_objects)
             self.env.create_packed(info, exampleID, exampleOrn)
-            #self.env.create_pile(info)
+            # self.env.create_pile(info)
 
 
             matchingObjectID = self.env.obj_ids[exampleObjectNumber + 1]
@@ -328,8 +328,8 @@ class GrasppingScenarios():
                             pileSegments.append(segment)
                     predictedNumberOfSegments = len(pileSegments)
                 else:
-                    pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, numberOfSegments)
-                    predictedNumberOfSegments = len(pileSegments)
+                    pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, "guess")
+                    predictedNumberOfSegments = pileSegments
                 if len(pileSegments) == 0:
                     number_of_failures += 1
                     break
@@ -407,7 +407,7 @@ def parse_args():
 
     parser.add_argument('--graspingNetwork',
                         type=str,
-                        default='CGR_ConvNet',
+                        default='GR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,

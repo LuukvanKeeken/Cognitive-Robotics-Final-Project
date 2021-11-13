@@ -3,7 +3,8 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from sklearn.cluster import KMeans, SpectralClustering
+from sklearn.cluster import KMeans
+import sklearn.metrics as metrics
 
 
 class Segmenter:
@@ -37,25 +38,67 @@ class Segmenter:
 
         return new_depth_image, new_rgb_image
 
-    def find_clusters(self, n_clusters):
+    def find_clusters(self):
         """
         Method that clusters the data (of which the table data is already
           removed) using k-means clustering. Labels for each point, clusters
-          of points, and the corresponding cluster centers are saved.
+          of points, and the corresponding cluster centers are saved. If the
+          system is instructed to guess the number of clusters, then it will
+          calculate the silhouette score for 2 to 10 clusters. The number
+          of clusters with the highest score is used.
         """
-        kmeans = KMeans(n_clusters=n_clusters,
-                        random_state=0).fit(self.data_for_clustering)
+        if self.n_clusters == "guess":
+            max_score = -1
+            self.n_clusters = 2
+            for i in range(2, 11):
+                kmeans = KMeans(n_clusters=i,
+                                random_state=0).fit(self.data_for_clustering)
+                score = metrics.silhouette_score(self.data_for_clustering,kmeans.labels_,metric="euclidean",sample_size=1000,random_state=200)
+                if score > max_score:
+                    max_score = score
+                    self.n_clusters = i
+        
+        kmeans = KMeans(n_clusters=self.n_clusters,
+                            random_state=0).fit(self.data_for_clustering)
+
         a_x = []
         a_y = []
         self.labels = kmeans.labels_
         self.cluster_centers = kmeans.cluster_centers_
-        self.clusters = [[] for i in range(n_clusters)]
+        self.clusters = [[] for i in range(self.n_clusters)]
         for i in range(len(self.data_for_clustering)):
             a_x.append(self.data_for_clustering[i][0])
             a_y.append(self.data_for_clustering[i][1])
             self.clusters[self.labels[i]].append([
                 self.data_for_clustering[i][0], self.data_for_clustering[i][1]
             ])
+        # else:
+        #     print("n_clusters: " + str(n_clusters))
+        #     inertias = []
+        #     max_score = -1
+        #     max_clusters = 0
+        #     for i in range(2,12):
+        #         kmeans = KMeans(n_clusters=i,
+        #                         random_state=0).fit(self.data_for_clustering)
+        #         inertias.append(kmeans.inertia_)
+        #         score = metrics.silhouette_score(self.data_for_clustering,kmeans.labels_,metric="euclidean",sample_size=1000,random_state=200)
+        #         print ("Silhouette score for k(clusters) = "+str(i)+" is " +str(score))
+        #         if score > max_score:
+        #             max_score = score
+        #             max_clusters = i
+
+        #     print(str(max_clusters) + " clusters, with score of " + str(max_score))
+            
+        #     exit(0)
+        #     inert_plot = plt.figure()
+        #     inert_plotax = inert_plot.add_subplot()
+        #     inert_plotax = sns.scatterplot(x= range(1,12), y= inertias)
+
+        #     second_deriv = []
+        #     for i in range(1,10):
+        #         print(str(i+1) + ": " + str(inertias[i+1] + inertias[i-1] - 2 * inertias[i]))
+        #     plt.show()
+        #     exit(0)
 
     def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
@@ -69,6 +112,7 @@ class Segmenter:
         of the cluster center, and the rgb values of the cluster center. Note, these
         depth and rgb values are not the values in the original images at that (x,y)
         location, but rather the calculted centers in depth and rgb space.
+
         n_clusters: the number of clusters that should be found in this image.
         rgb_image: original rgb image as taken by the robot, containing
           n_clusters objects.
@@ -77,15 +121,16 @@ class Segmenter:
 
         self.rgb_image = rgb_image
         self.depth_image = depth_image
+        self.n_clusters = n_clusters
 
         self.data_for_clustering = self.remove_table()
 
-        self.find_clusters(n_clusters)
+        self.find_clusters()
 
-        self.translated_clusters = [[] for i in range(n_clusters)]
+        self.translated_clusters = [[] for i in range(self.n_clusters)]
         self.new_depth_images = []
         self.new_rgb_images = []
-        for i in range(n_clusters):
+        for i in range(self.n_clusters):
             self.translated_clusters[i] = self.translate_clusters(
                 self.clusters[i], self.cluster_centers[i])
             new_depth_image, new_rgb_image = self.create_new_images(
@@ -94,7 +139,7 @@ class Segmenter:
             self.new_rgb_images.append(new_rgb_image)
 
         segmentations = []
-        for i in range(n_clusters):
+        for i in range(self.n_clusters):
             segmentations.append([
                 self.cluster_centers[i], self.new_rgb_images[i],
                 self.new_depth_images[i]
