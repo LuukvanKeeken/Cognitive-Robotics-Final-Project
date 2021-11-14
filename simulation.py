@@ -19,14 +19,15 @@ from environment.env import Environment
 from environment.utilities import Camera
 from grasp_generator import GraspGenerator
 from object_matching import ObjectMatching
-from segmenter import Segmenter
+from segmenter_kmeans import Segmenter as Segmenter_kmeans
+from segmenter_watershed import Segmenter as Segmenter_watershed
 from utils import IsolatedObjData, PackPileData, YcbObjects, summarize
 
 
 
 
 class GrasppingScenarios():
-    def __init__(self, grasp_network_model="GR_ConvNet", matching_network_model = 'mobileNetV2'):
+    def __init__(self, grasp_network_model="GR_ConvNet", matching_network_model = 'mobileNetV2', segmentation_method='kmeans'):
 
         self.grasp_network_model = grasp_network_model
         self.matching_network_model = matching_network_model
@@ -61,6 +62,18 @@ class GrasppingScenarios():
             self.matching_network_path = ''
         else:
             print("The selected network has not been implemented yet!")
+            exit()
+        
+        self.synthetic = False
+        if segmentation_method == 'kmeans':
+            self.segmenter = Segmenter_kmeans()
+        elif segmentation_method == 'watershed':
+            self.segmenter = Segmenter_watershed()
+        elif segmentation_method == 'synthetic':
+            self.segmenter = Segmenter_kmeans()
+            self.synthetic = True
+        else:
+            print('The selected segmentation method has not been implemented yet!')
             exit()
 
         self.CAM_Z = 1.9
@@ -195,13 +208,13 @@ class GrasppingScenarios():
             distances.append(math.hypot(difX, difY))
         return int(np.argmin(np.array(distances)))
 
-    def getExampleRepresentation(self, segmenter : Segmenter, exampleCamera : Camera,objectMatchingModel : ObjectMatching):
+    def getExampleRepresentation(self, exampleCamera : Camera,objectMatchingModel : ObjectMatching):
         # First, capture an image with the example camera, and calculate its representation
         fullExampleBgr, fullExampleDepth, _ = exampleCamera.get_cam_img()
         fullExampleRgb = cv2.cvtColor(fullExampleBgr, cv2.COLOR_BGR2RGB)
         failed = False
         # change segmentation to 1 segment
-        exampleSegments = segmenter.get_segmentations(fullExampleRgb, fullExampleDepth, 1)
+        exampleSegments = Segmenter_kmeans().get_segmentations(fullExampleRgb, fullExampleDepth, 1)
         if len(exampleSegments) != 1:
             failed = True
             exampleRepresentation = 0
@@ -309,10 +322,9 @@ class GrasppingScenarios():
             if not (self.is_there_any_object(camera) and self.is_there_any_object(exampleCamera)):
                 number_of_failures +=1
                 break
-            segmenter = Segmenter()
             
             # First, get the example representation
-            exampleRepresentation, failed = self.getExampleRepresentation(segmenter, exampleCamera, objectMatchingModel)
+            exampleRepresentation, failed = self.getExampleRepresentation(exampleCamera, objectMatchingModel)
             if failed:
                 number_of_failures += 1
                 break
@@ -323,7 +335,7 @@ class GrasppingScenarios():
                 pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
                 unique = np.unique(pileSegmentation)
                 trueNumberOfSegments = len(unique)-2
-                syntheticSegmenter = True
+                syntheticSegmenter = self.synthetic
                 if syntheticSegmenter:
                     pileSegments = []
                     (unique, counts) = np.unique(pileSegmentation, return_counts=True)
@@ -342,11 +354,11 @@ class GrasppingScenarios():
                                         depthValue = pileDepth[i,j]
                                         segmentDepthImage[i,j] = depthValue
                             
-                            segment = segmenter.get_segmentations(segmentRgbImage, segmentDepthImage, 1)[0]
+                            segment = self.segmenter.get_segmentations(segmentRgbImage, segmentDepthImage, 1)[0]
                             pileSegments.append(segment)
                     predictedNumberOfSegments = len(pileSegments)
                 else:
-                    pileSegments = segmenter.get_segmentations(pileRgb, pileDepth, "guess")
+                    pileSegments = self.segmenter.get_segmentations(pileRgb, pileDepth, "guess")
                     predictedNumberOfSegments = pileSegments
                 if len(pileSegments) == 0:
                     number_of_failures += 1
@@ -357,6 +369,20 @@ class GrasppingScenarios():
                 objectRepresentations = []
                 for _, segment in enumerate(pileSegments):
                     _, segmentRGB, segmentDepth = segment
+                    if False:
+                        fig, axes = plt.subplots(ncols=2, figsize=(9, 2), sharex=True, sharey=True, num=1)
+                        ax = axes.ravel()
+
+                        ax[0].imshow(segmentRGB)
+                        ax[0].set_title('Segmented RGB')
+                        ax[1].imshow(segmentDepth, cmap=plt.cm.gray)
+                        ax[1].set_title('Segmented Depth')
+
+                        for a in ax:
+                            a.set_axis_off()
+
+                        fig.tight_layout()
+                        plt.show()
                     objectRepresentations.append(objectMatchingModel.calculateRepresentation(segmentRGB, segmentDepth))#, segmentDepth, n_grasps=3))
 
                 # For each object representation, match it with the sample object representation
@@ -433,6 +459,10 @@ def parse_args():
                         type=str,
                         default='mobileNetV2',
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
+    parser.add_argument('--segmentationMethod',
+                        type=str,
+                        default='kmeans',
+                        help='Segmentation method (kmeans/watershed/synthetic)')                        
     parser.add_argument('--runs',
                         type=int,
                         default=10,
@@ -473,5 +503,5 @@ if __name__ == '__main__':
     vis = args.vis
     report = args.report
 
-    grasp = GrasppingScenarios(args.graspingNetwork, args.matchingNetwork)
+    grasp = GrasppingScenarios(args.graspingNetwork, args.matchingNetwork, args.segmentationMethod)
     grasp.graspExampleFromObjectsScenario(runs, device, vis, debug=False)

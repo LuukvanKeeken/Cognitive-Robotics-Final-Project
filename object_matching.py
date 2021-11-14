@@ -7,6 +7,7 @@ from network.hardware.device import get_device
 from network.utils.data.camera_data import CameraData
 
 
+
 class ObjectMatching:
     IMG_WIDTH = 224
     IMG_SHAPE = (IMG_WIDTH, IMG_WIDTH, 3)
