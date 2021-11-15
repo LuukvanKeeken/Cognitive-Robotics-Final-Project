@@ -44,7 +44,7 @@ class GrasppingScenarios():
             self.grasp_network_path = 'trained_models/3D_GDM-RSON/CNN/pretrained_model/model1'
             sys.path.append('trained_models/3D_GDM-RSON')
         else:
-            print("The selected network has not been implemented yet!")
+            print("The selected grasping network has not been implemented yet!")
             exit()
 
         if (matching_network_model == "GR_ConvNet"):
@@ -60,8 +60,11 @@ class GrasppingScenarios():
         elif (matching_network_model == 'mobileNetV2'):
             self.IMG_SIZE = 224
             self.matching_network_path = ''
+        elif (matching_network_model == 'GOOD'):
+            self.IMG_SIZE = 224
+            self.matching_network_path = ''
         else:
-            print("The selected network has not been implemented yet!")
+            print("The selected matching network has not been implemented yet!")
             exit()
         
         self.synthetic = False
@@ -179,10 +182,15 @@ class GrasppingScenarios():
             path, mod_orn, mod_stiffness = objects.get_obj_info(objects.obj_names[exampleObjectNumber])
             exampleOrn = self.env.load_example_obj(path, mod_orn, mod_stiffness)
             exampleID = -1 #exampleObjectNumber
-            
+            self.example_object_name = objects.obj_names[exampleObjectNumber]
+
             # Pile of objects - LEFT
             
             info = objects.get_n_first_obj_info(number_of_objects)
+            self.target_object_names = []
+            for i in range(number_of_objects):
+                self.target_object_names.append(objects.obj_names[i])
+
             self.env.create_packed(info, exampleID, exampleOrn)
             # self.env.create_pile(info)
 
@@ -387,7 +395,7 @@ class GrasppingScenarios():
 
                 # For each object representation, match it with the sample object representation
                 realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
-                bestPredictedID, worstPredictedID, uncertain = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID)
+                bestPredictedID, worstPredictedID, uncertain = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID, targetNames=self.target_object_names, exampleName=self.example_object_name)
 
                 # is there is a match, escape from loop. Else, try to remove the worst match
                 if not uncertain:
@@ -408,6 +416,7 @@ class GrasppingScenarios():
                 if faultyGrasp:
                     pileManipulationGraspFaults +=1
                 else:
+                    del(self.target_object_names[worstPredictedID])
                     numberOfSegments -=1
  
             if realSegmentID != bestPredictedID:

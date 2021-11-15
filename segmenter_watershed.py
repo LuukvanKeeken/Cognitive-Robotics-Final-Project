@@ -68,7 +68,7 @@ class Segmenter:
         image = -np.array(depth_image*255).astype('uint8')
 
         #denoise image
-        denoised = rank.median(image, disk(2))
+        denoised = rank.median(image, disk(1))
 
         # find continuous region (low gradient -
         # where less than 10 for this image) --> markers
@@ -77,7 +77,7 @@ class Segmenter:
         markers = ndi.label(markers)[0]
 
         # local gradient (disk(2) is used to keep edges thin)
-        gradient = rank.gradient(denoised, disk(1))
+        gradient = rank.gradient(denoised, disk(2))
 
         # process the watershed
         labels = watershed(gradient, markers)
