@@ -842,6 +842,7 @@ class Environment:
         zEnd = z + z_offset
         inPosition = False
         stepSize = 0.01
+        self.move_ee([x, y, zStep, orn], positionAccuracy= 0.02, rotationAccuracy=0.2)
         while not inPosition:
             zStep -= stepSize
             if zStep < zEnd:
@@ -866,7 +867,7 @@ class Environment:
         else:
             return succes_target, succes_grasp
         self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT + 0.2, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
-        self.move_ee([0.2, -0.45, self.GRIPPER_MOVING_HEIGHT + 0.2, orn],positionAccuracy= 0.4, rotationAccuracy=2)
+        #self.move_ee([0.2, -0.45, self.GRIPPER_MOVING_HEIGHT + 0.2, orn],positionAccuracy= 0.4, rotationAccuracy=2)
         #wrongPrediction = True
         if wrongPrediction:
             throwAway = False
@@ -885,6 +886,9 @@ class Environment:
                     if index > 7: self.move_gripper(0.085)
                 for _ in range(2): self.step_simulation()
             else:
+                for index in range(8):
+                    p.setJointMotorControl2(self.robot_id, self.joints["shoulder_pan_joint"].id, p.POSITION_CONTROL, targetPosition=-3.14)#, force=violence, maxVelocity=violence)
+                    self.step_simulation()
                 self.move_ee([-0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.2, orn], positionAccuracy= 0.2, rotationAccuracy=0.4)
                 self.move_ee([-0.65, 0.0, self.GRIPPER_MOVING_HEIGHT-0.2, orn], positionAccuracy= 0.4, rotationAccuracy=0.4)
                 self.move_gripper(0.085)
@@ -893,7 +897,9 @@ class Environment:
                 self.move_ee([0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.2, rotationAccuracy=2)
                 
             return succes_target, succes_grasp
-
+        for index in range(8):
+            p.setJointMotorControl2(self.robot_id, self.joints["shoulder_pan_joint"].id, p.POSITION_CONTROL, targetPosition=0.0)#, force=violence, maxVelocity=violence)
+            self.step_simulation()
         # Move object to target zone
         y_drop = self.TARGET_ZONE_POS[2] + z_offset + obj_height + 0.15
         #y_orn = p.getQuaternionFromEuler([-np.pi*0.25, np.pi/2, 0.0])

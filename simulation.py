@@ -416,7 +416,7 @@ class GrasppingScenarios():
                 if faultyGrasp:
                     pileManipulationGraspFaults +=1
                 else:
-                    del(self.target_object_names[worstPredictedID])
+                    #del(self.target_object_names[worstPredictedID])
                     numberOfSegments -=1
  
             if realSegmentID != bestPredictedID:
