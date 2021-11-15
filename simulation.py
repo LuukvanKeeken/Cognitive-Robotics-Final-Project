@@ -375,6 +375,7 @@ class GrasppingScenarios():
                     numberOfFaultPredictedSegments +=1
 
                 objectRepresentations = []
+                start = time.time()
                 for _, segment in enumerate(pileSegments):
                     _, segmentRGB, segmentDepth = segment
                     if False:
@@ -396,7 +397,8 @@ class GrasppingScenarios():
                 # For each object representation, match it with the sample object representation
                 realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
                 bestPredictedID, worstPredictedID, uncertain = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID, targetNames=self.target_object_names, exampleName=self.example_object_name)
-
+                #elapsed= time.time()-start
+                #print("time is " + str(elapsed) + "s")
                 # is there is a match, escape from loop. Else, try to remove the worst match
                 if not uncertain:
                     break
@@ -462,11 +464,11 @@ def parse_args():
 
     parser.add_argument('--graspingNetwork',
                         type=str,
-                        default='GR_ConvNet',
+                        default='CGR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,
-                        default='mobileNetV2',
+                        default='CGR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--segmentationMethod',
                         type=str,
@@ -493,7 +495,7 @@ def parse_args():
                         help='device (cpu/gpu)')
     parser.add_argument('--vis',
                         type=bool,
-                        default=True,
+                        default=False,
                         help='vis (True/False)')
     parser.add_argument('--report',
                         type=bool,
