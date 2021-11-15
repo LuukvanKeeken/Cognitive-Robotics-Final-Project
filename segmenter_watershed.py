@@ -73,11 +73,11 @@ class Segmenter:
         # find continuous region (low gradient -
         # where less than 10 for this image) --> markers
         # disk(5) is used here to get a more smooth image
-        markers = rank.gradient(denoised, disk(5)) < 1
+        markers = rank.gradient(denoised, disk(3)) < 1
         markers = ndi.label(markers)[0]
 
         # local gradient (disk(2) is used to keep edges thin)
-        gradient = rank.gradient(denoised, disk(2))
+        gradient = rank.gradient(denoised, disk(1))
 
         # process the watershed
         labels = watershed(gradient, markers)

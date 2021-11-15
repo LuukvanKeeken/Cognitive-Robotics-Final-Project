@@ -115,7 +115,7 @@ class ObjectMatching:
 
         """
         distances = []
-        for i, representation in enumerate(objectRepresentations):
+        for _, representation in enumerate(objectRepresentations):
             if self.representationNetwork == 'GR_ConvNet' or  self.representationNetwork == 'CGR_ConvNet':
                 difference = torch.dist(exampleRepresentation, representation)
                 sumDifference = torch.sum(difference)
@@ -126,7 +126,7 @@ class ObjectMatching:
             elif self.representationNetwork == 'GOOD':
                 ##### GOOD #####
                 distance = euclidean_distances(np.array(exampleRepresentation).reshape(1, -1), np.array(representation).reshape(1, -1))[0][0]
-                print(f'Euclidean distance between {targetNames[i]} and example {exampleName} is {distance}')
+                #print(f'Euclidean distance between {targetNames[i]} and example {exampleName} is {distance}')
             else:
                 print('distance function for this network is not implemented')
                 exit()
