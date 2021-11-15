@@ -104,7 +104,11 @@ class GraspGenerator:
         depth_values = depth_img[x_min:x_max, y_min:y_max]
 
         # Get minimum depth value from selected area
-        z_p = np.amin(depth_values)
+        try:
+            z_p = np.amin(depth_values)
+        except:
+            return False, 0, 0, 0, 0, 0, 0
+
 
         # Convert pixels to meters
         x_p /= self.PIX_CONVERSION
@@ -129,7 +133,7 @@ class GraspGenerator:
         obj_height = self.DIST_BACKGROUND - z_p
 
         # return x, y, z, roll, opening length gripper
-        return robot_frame_ref[0], robot_frame_ref[1], robot_frame_ref[
+        return True, robot_frame_ref[0], robot_frame_ref[1], robot_frame_ref[
             2], roll, opening_length, obj_height
 
     def post_process_output(self, q_img, cos_img, sin_img, width_img,
