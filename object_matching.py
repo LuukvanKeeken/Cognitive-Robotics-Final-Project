@@ -6,7 +6,11 @@ import tensorflow as tf
 from network.hardware.device import get_device
 from network.utils.data.camera_data import CameraData
 import subprocess
-import open3d as o3d
+try:
+  import open3d as o3d
+except:
+  print('Open3D is not installed. Do not use GOOD matching')
+#import open3d as o3d
 import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import euclidean_distances
 

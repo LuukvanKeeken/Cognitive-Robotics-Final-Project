@@ -865,8 +865,8 @@ class Environment:
             grasped_obj_id = grasped_id[0]
         else:
             return succes_target, succes_grasp
-        
-        self.move_ee([0.2, -0.45, self.GRIPPER_MOVING_HEIGHT, orn],positionAccuracy= 0.4, rotationAccuracy=2)
+        self.move_ee([x, y, self.GRIPPER_MOVING_HEIGHT + 0.2, orn], positionAccuracy= 0.04, rotationAccuracy=0.02)
+        self.move_ee([0.2, -0.45, self.GRIPPER_MOVING_HEIGHT + 0.2, orn],positionAccuracy= 0.4, rotationAccuracy=2)
         #wrongPrediction = True
         if wrongPrediction:
             throwAway = False
@@ -885,7 +885,7 @@ class Environment:
                     if index > 7: self.move_gripper(0.085)
                 for _ in range(2): self.step_simulation()
             else:
-                self.move_ee([-0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.2, rotationAccuracy=0.4)
+                self.move_ee([-0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.2, orn], positionAccuracy= 0.2, rotationAccuracy=0.4)
                 self.move_ee([-0.65, 0.0, self.GRIPPER_MOVING_HEIGHT-0.2, orn], positionAccuracy= 0.4, rotationAccuracy=0.4)
                 self.move_gripper(0.085)
                 self.move_ee([-0.5, 0.0, self.GRIPPER_MOVING_HEIGHT+0.1, orn], positionAccuracy= 0.2, rotationAccuracy=2)
@@ -900,6 +900,7 @@ class Environment:
         y_orn = p.getQuaternionFromEuler([0, np.pi/2, 0.0])
 
         #self.move_arm_away()
+        self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], self.GRIPPER_MOVING_HEIGHT+0.2, y_orn], positionAccuracy= 0.1, rotationAccuracy = 3.14)       
         self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], 1.25, y_orn], positionAccuracy= 0.1, rotationAccuracy = 3.14)       
         self.move_ee([self.TARGET_ZONE_POS[0], self.TARGET_ZONE_POS[1], y_drop, y_orn], positionAccuracy= 0.1, rotationAccuracy = 0.1)
         

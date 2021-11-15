@@ -367,11 +367,11 @@ class GrasppingScenarios():
                     predictedNumberOfSegments = len(pileSegments)
                 else:
                     pileSegments = self.segmenter.get_segmentations(pileRgb, pileDepth, "guess")
-                    predictedNumberOfSegments = pileSegments
+                    predictedNumberOfSegments = len(pileSegments)
                 if len(pileSegments) == 0:
                     number_of_failures += 1
                     break
-                if trueNumberOfSegments != predictedNumberOfSegments:
+                if int(trueNumberOfSegments) != int(predictedNumberOfSegments):
                     numberOfFaultPredictedSegments +=1
 
                 objectRepresentations = []
