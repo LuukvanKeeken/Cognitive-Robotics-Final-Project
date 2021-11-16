@@ -446,7 +446,7 @@ def parse_args():
 
     parser.add_argument('--scenario',
                         type=str,
-                        default='packed',
+                        default='pile',
                         help='Scenario (packed/pile)')
     parser.add_argument('--graspingNetwork',
                         type=str,
@@ -454,7 +454,7 @@ def parse_args():
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,
-                        default='mobileNetV2',
+                        default='CGR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--segmentationMethod',
                         type=str,
