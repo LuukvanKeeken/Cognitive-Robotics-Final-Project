@@ -98,7 +98,7 @@ class ObjectMatching:
         elif self.representationNetwork == 'GOOD':
             ##### GOOD #####
             internal = self.get_good(input) # implement GOOD
-            print(internal)
+            #print(internal)
         else:
             with torch.no_grad():
                 xc = x.to(self.device)

@@ -82,7 +82,7 @@ class Segmenter:
         # process the watershed
         labels = watershed(gradient, markers)
 
-        if True:
+        if False:
             fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True, num=1)
             ax = axes.ravel()
 

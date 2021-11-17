@@ -63,3 +63,4 @@ depth_data*
 figs/
 .vscode/settings.json
 GOOD/build
+pointclouds/image.pcd

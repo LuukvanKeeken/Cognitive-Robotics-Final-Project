@@ -188,14 +188,15 @@ class GrasppingScenarios():
             # Pile of objects - LEFT
             
             info = objects.get_n_first_obj_info(number_of_objects)
+            
             self.target_object_names = []
             for i in range(number_of_objects):
                 self.target_object_names.append(objects.obj_names[i])
 
             if self.scenario == 'packed':
-                self.env.create_packed(info, exampleID, exampleOrn)
+                self.env.create_packed(info, exampleID, exampleOrn, names=self.target_object_names)
             elif self.scenario == 'pile':
-                self.env.create_pile(info)
+                self.env.create_pile(info, names=self.target_object_names)
 
             matchingObjectID = self.env.obj_ids[exampleObjectNumber + 1]
             self.graspExampleFromObjectsExperiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, camera, graspGenerator, objectMatchingModel, vis, matchingObjectID)
@@ -342,6 +343,12 @@ class GrasppingScenarios():
             # Next, capture an image with the objects camera, segment image and calculate several representations
             #while manipulationAttempts < 3:
             pileBgr, pileDepth, pileSegmentation = camera.get_cam_img()
+            print(pileSegmentation)
+            for n, obj_name in self.env.obj_names.items():
+                print(f'{n}: {obj_name}')
+            plt.imshow(pileSegmentation)
+            plt.show()
+            exit()
             pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
             unique = np.unique(pileSegmentation)
             trueNumberOfSegments = len(unique)-2

@@ -31,6 +31,7 @@ class Environment:
 
         self.obj_init_pos = (camera.x, camera.y)
         self.obj_ids = []
+        self.obj_names = {}
         self.obj_positions = []
         self.obj_orientations = []
 
@@ -396,9 +397,11 @@ class Environment:
             self.obj_positions[i] = pos
             self.obj_orientations[i] = orn
 
-    def load_obj(self, path, pos, yaw, mod_orn=False, mod_stiffness=False):
+    def load_obj(self, path, pos, yaw, name=None, mod_orn=False, mod_stiffness=False):
         orn = p.getQuaternionFromEuler([0, 0, yaw])
         obj_id = p.loadURDF(path, pos, orn)
+        if name is None:
+            name = ''
         # adjust position according to height
         aabb = p.getAABB(obj_id, -1)
         if mod_orn:
@@ -425,11 +428,12 @@ class Environment:
                              spinningFriction=0.001,
                              restitution=0.01)
         self.obj_ids.append(obj_id)
+        self.obj_names[obj_id] = name
         self.obj_positions.append(pos)
         self.obj_orientations.append(orn)
         return obj_id, pos, orn
     
-    def load_example_obj(self, path, mod_orn=False, mod_stiffness=False):
+    def load_example_obj(self, path, name=None, mod_orn=False, mod_stiffness=False):
         r_x = random.uniform(
             self.obj_init_pos[0] - 0.1, self.obj_init_pos[0] + 0.1)
         r_y = random.uniform(
@@ -437,11 +441,11 @@ class Environment:
         yaw = random.uniform(0, np.pi)
 
         pos = [r_x, r_y, self.Z_TABLE_TOP]
-        obj_id, _, _ = self.load_obj(path, pos, yaw, mod_orn, mod_stiffness)
+        obj_id, _, _ = self.load_obj(path, pos, yaw, name, mod_orn, mod_stiffness)
         self.update_obj_states()
         return yaw
 
-    def load_isolated_obj(self, path, mod_orn=False, mod_stiffness=False):
+    def load_isolated_obj(self, path, name=None, mod_orn=False, mod_stiffness=False):
         r_x = random.uniform(
             self.obj_init_pos[0] - 0.1, self.obj_init_pos[0] + 0.1)
         r_y = random.uniform(
@@ -449,7 +453,7 @@ class Environment:
         yaw = random.uniform(0, np.pi)
 
         pos = [r_x, r_y, self.Z_TABLE_TOP]
-        obj_id, _, _ = self.load_obj(path, pos, yaw, mod_orn, mod_stiffness)
+        obj_id, _, _ = self.load_obj(path, pos, yaw, name, mod_orn, mod_stiffness)
         for _ in range(100):
             self.step_simulation()
             
@@ -482,9 +486,13 @@ class Environment:
                          useFixedBase=True)
         return [id1, id2, id3, id4]
 
-    def create_example_pile(self, obj_info, added_y):
+    def create_example_pile(self, obj_info, added_y, names=[]):
         box_ids = self.create_temp_box(0.36, 1)
-        for path, mod_orn, mod_stiffness in obj_info:
+        for n, (path, mod_orn, mod_stiffness) in enumerate(obj_info):
+            if n < len(names):
+                name = names[n]
+            else:
+                name = None
             margin = 0.025
             r_x = random.uniform(
                 self.obj_init_pos[0] - margin, self.obj_init_pos[0] + margin)
@@ -494,7 +502,7 @@ class Environment:
             pos = [r_x, r_y, 1.0]
 
             obj_id, _, _ = self.load_obj(
-                path, pos, yaw, mod_orn, mod_stiffness)
+                path, pos, yaw, name, mod_orn, mod_stiffness)
             for _ in range(10):
                 self.step_simulation()
             self.wait_until_still(obj_id, 30)
@@ -509,9 +517,13 @@ class Environment:
         self.wait_until_all_still(200)
         self.update_obj_states()
 
-    def create_pile(self, obj_info):
+    def create_pile(self, obj_info, names=[]):
         box_ids = self.create_temp_box(0.36, 1)
-        for path, mod_orn, mod_stiffness in obj_info:
+        for n, (path, mod_orn, mod_stiffness) in enumerate(obj_info):
+            if n < len(names):
+                name = names[n]
+            else:
+                name = None
             margin = 0.025
             r_x = random.uniform(
                 self.obj_init_pos[0] - margin, self.obj_init_pos[0] + margin)
@@ -521,7 +533,7 @@ class Environment:
             pos = [r_x, r_y, 1.0]
 
             obj_id, _, _ = self.load_obj(
-                path, pos, yaw, mod_orn, mod_stiffness)
+                path, pos, yaw, name, mod_orn, mod_stiffness)
             for _ in range(1):
                 self.step_simulation()
             self.wait_until_still(obj_id, 30)
@@ -567,30 +579,45 @@ class Environment:
             new_pos[axis] += step
         p.resetBasePositionAndOrientation(obj_id, new_pos, orn)
 
-    def create_example_packed(self, obj_info, added_y):
+    def create_example_packed(self, obj_info, added_y, names=[]):
         init_x, init_y, init_z = self.obj_init_pos[0], self.obj_init_pos[1] + added_y, self.Z_TABLE_TOP
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[0]
+        name = None
+        if len(names) > 0:
+            name = names[0]
         center_obj, _, _ = self.load_obj(
-            path, [init_x, init_y, init_z], yaw, mod_orn, mod_stiffness)
+            path, [init_x, init_y, init_z], yaw, name, mod_orn, mod_stiffness)
 
         margin = 0.3
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[1]
+        name = None
+        if len(names) > 1:
+            name = names[1]
         left_obj_id, _, _ = self.load_obj(
-            path, [init_x-margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+            path, [init_x-margin, init_y, init_z], yaw, name, mod_orn, mod_stiffness)
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[2]
+        name = None
+        if len(names) > 2:
+            name = names[2]
         top_obj_id, _, _ = self.load_obj(
-            path, [init_x, init_y+margin, init_z], yaw, mod_orn, mod_stiffness)
+            path, [init_x, init_y+margin, init_z], yaw, name, mod_orn, mod_stiffness)
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[3]
+        name = None
+        if len(names) > 3:
+            name = names[3]
         right_obj_id, _, _ = self.load_obj(
-            path, [init_x+margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+            path, [init_x+margin, init_y, init_z], yaw, name, mod_orn, mod_stiffness)
         yaw = random.uniform(0, np.pi)
         path, mod_orn, mod_stiffness = obj_info[4]
+        name = None
+        if len(names) > 4:
+            name = names[4]
         down_obj_id, _, _ = self.load_obj(
-            path, [init_x, init_y-margin, init_z], yaw, mod_orn, mod_stiffness)
+            path, [init_x, init_y-margin, init_z], yaw, name, mod_orn, mod_stiffness)
 
         self.wait_until_all_still()
         step = 0.01
@@ -600,37 +627,47 @@ class Environment:
         self.move_obj_along_axis(down_obj_id, 1, '+', step, init_y)
         self.update_obj_states()        
 
-    def create_packed(self, obj_info, exampleID, exampleOrn):
+    def create_packed(self, obj_info, exampleID, exampleOrn, names=[]):
         init_x, init_y, init_z = self.obj_init_pos[0], self.obj_init_pos[1], self.Z_TABLE_TOP
         
         
         yaw = random.uniform(0, np.pi)
         if exampleID == 0: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[0]
+        if len(names) > 0:
+            name = names[0]
         center_obj, _, _ = self.load_obj(
-            path, [init_x, init_y, init_z], yaw, mod_orn, mod_stiffness)
+            path, [init_x, init_y, init_z], yaw, name, mod_orn, mod_stiffness)
 
         margin = 0.25
         
         yaw = random.uniform(0, np.pi)
         if exampleID == 1: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[1]
-        left_obj_id, _, _ = self.load_obj(path, [init_x-margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+        if len(names) > 1:
+            name = names[1]
+        left_obj_id, _, _ = self.load_obj(path, [init_x-margin, init_y, init_z], yaw, name, mod_orn, mod_stiffness)
         
         yaw = random.uniform(0, np.pi)
         if exampleID == 2: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[2]
-        top_obj_id, _, _ = self.load_obj(path, [init_x, init_y+margin, init_z], yaw, mod_orn, mod_stiffness)
+        if len(names) > 2:
+            name = names[2]
+        top_obj_id, _, _ = self.load_obj(path, [init_x, init_y+margin, init_z], yaw, name, mod_orn, mod_stiffness)
         
         yaw = random.uniform(0, np.pi)
         if exampleID == 3: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[3]
-        right_obj_id, _, _ = self.load_obj(path, [init_x+margin, init_y, init_z], yaw, mod_orn, mod_stiffness)
+        if len(names) > 3:
+            name = names[3]
+        right_obj_id, _, _ = self.load_obj(path, [init_x+margin, init_y, init_z], yaw, name, mod_orn, mod_stiffness)
         
         yaw = random.uniform(0, np.pi)
         if exampleID == 4: yaw = exampleOrn
         path, mod_orn, mod_stiffness = obj_info[4]
-        down_obj_id, _, _ = self.load_obj(path, [init_x, init_y-margin, init_z], yaw, mod_orn, mod_stiffness)
+        if len(names) > 4:
+            name = names[4]
+        down_obj_id, _, _ = self.load_obj(path, [init_x, init_y-margin, init_z], yaw, name, mod_orn, mod_stiffness)
 
         self.wait_until_all_still()
         step = 0.01
