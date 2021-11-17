@@ -1,3 +1,4 @@
+from fileinput import filename
 import pathlib
 import argparse
 import math
@@ -87,6 +88,7 @@ class GrasppingScenarios():
         self.data = None
         self.env = None
         self.experimentResults = []
+        self.match_results = []
 
     def draw_predicted_grasp(self, grasps, color=[0, 0, 1], lineIDs=[]):
         x, y, z, yaw, opening_len, obj_height = grasps
@@ -310,7 +312,23 @@ class GrasppingScenarios():
             csvFile.writerow(header)      
             for index, result in enumerate(self.experimentResults):
                 result.insert(0, str(index))
-                csvFile.writerow(result)  
+                csvFile.writerow(result)
+
+        if self.synthetic:
+            if len(self.match_results) == 0:
+                print('no matching results to write')
+                exit()
+            header = ['run', 'attempt', 'target', 'best', 'worst']
+            fileName = 'matches scenario ' + self.scenario + ' .csv'
+            with open(fileName, 'w', encoding='UTF8', newline='') as f:
+                csvFile = csv.writer(f)
+                csvFile.writerow(header)
+                run = -1
+                for result in self.match_results:
+                    if result[0] == 0:
+                        run += 1
+                    line = [run] + result
+                    csvFile.writerow(line)
 
     def graspExampleFromObjectsExperiment(self, obj_name, number_of_attempts, exampleCamera : Camera, camera : Camera, graspGenerator : GraspGenerator, objectMatchingModel : ObjectMatching, vis, matchingObjectID):
         number_of_failures = 0
@@ -329,6 +347,7 @@ class GrasppingScenarios():
         idx = 0  ## select the best grasp configuration
 
         manipulationAttempts = 0
+        matchno = 0
         while number_of_failures < number_of_attempts:
             if not (self.is_there_any_object(camera) and self.is_there_any_object(exampleCamera)):
                 number_of_failures +=1
@@ -343,18 +362,15 @@ class GrasppingScenarios():
             # Next, capture an image with the objects camera, segment image and calculate several representations
             #while manipulationAttempts < 3:
             pileBgr, pileDepth, pileSegmentation = camera.get_cam_img()
-            print(pileSegmentation)
-            for n, obj_name in self.env.obj_names.items():
-                print(f'{n}: {obj_name}')
-            plt.imshow(pileSegmentation)
-            plt.show()
-            exit()
+            #for n, obj_name in self.env.obj_names.items():
+            #    print(f'{n}: {obj_name}')
             pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
             unique = np.unique(pileSegmentation)
             trueNumberOfSegments = len(unique)-2
             syntheticSegmenter = self.synthetic
             if syntheticSegmenter:
                 pileSegments = []
+                pileSegmentNames = []
                 (unique, counts) = np.unique(pileSegmentation, return_counts=True)
                 for segmentIndex, count in enumerate(counts):
                     if count < 3000:
@@ -370,9 +386,10 @@ class GrasppingScenarios():
                                     segmentRgbImage[i,j] = rgbValue
                                     depthValue = pileDepth[i,j]
                                     segmentDepthImage[i,j] = depthValue
-                        
+                        name = self.env.obj_names[unique[segmentIndex]]
                         segment = self.segmenter.get_segmentations(segmentRgbImage, segmentDepthImage, 1)[0]
                         pileSegments.append(segment)
+                        pileSegmentNames.append(name)
                 predictedNumberOfSegments = len(pileSegments)
             else:
                 pileSegments = self.segmenter.get_segmentations(pileRgb, pileDepth, "guess")
@@ -405,10 +422,15 @@ class GrasppingScenarios():
             # For each object representation, match it with the sample object representation
             realSegmentID = self.debugTruthObject(matchingObjectID, pileSegments, pileDepth, graspGenerator)
             bestPredictedID, worstPredictedID, uncertain = objectMatchingModel.matchExampleWithObjectRepresentation(exampleRepresentation, objectRepresentations, realSegmentID, targetNames=self.target_object_names, exampleName=self.example_object_name)
+            if syntheticSegmenter:
+                self.match_results.append([matchno, self.example_object_name, pileSegmentNames[bestPredictedID], pileSegmentNames[worstPredictedID]])
+            matchno += 1
+                #print('Target: ' + self.example_object_name + ', Best match: ' + pileSegmentNames[bestPredictedID] + ', Worst match: ' + pileSegmentNames[worstPredictedID])
 
             # if the match is uncertain, try to manipulate the pile by removing the worst object
             manipulationAttempts +=1
-            if uncertain and manipulationAttempts <= 3:           
+            if uncertain and manipulationAttempts <= 3:
+                #print('Uncertain!')           
                 pileManipulations +=1
                 if worstPredictedID == realSegmentID: wrongWorstPrediction +=1
                 pos, segmentRGB, segmentDepth = pileSegments[worstPredictedID]
@@ -422,6 +444,7 @@ class GrasppingScenarios():
             pos, segmentRGB, segmentDepth = pileSegments[bestPredictedID]
             predictedGrasp, lineIDs, failed = self.createGrasp(graspGenerator, segmentRGB, segmentDepth, pileDepth, idx,  int(pos[0]) - 111, int(pos[1]) - 111)
             if failed:
+                #print('Failed!')
                 number_of_failures += 1
                 continue
 
