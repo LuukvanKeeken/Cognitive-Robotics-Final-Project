@@ -22,7 +22,7 @@ for filename in os.listdir(directory):
 
         runs = len(df.index)
 
-        runsSuccess = df.correctObjectManipulations.mean()/runs
+        runsSuccess = df.correctObjectManipulations.mean()
         predictionSuccess = df.correctObjectMatch.sum() / df.totalPredictions.sum()
         
         runsWithoutPileManipulation = len(df[df.pileManipulations == 0])/runs
@@ -42,7 +42,7 @@ for filename in os.listdir(directory):
         #correctManipulations
         #correctGrasps     
         #totalPredictions
-        
+
     else:
         continue
 
