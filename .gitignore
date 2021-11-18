@@ -51,7 +51,16 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
-*.csv
+#*.csv
 *.png
 .vscode/launch.json
 twotable_results/
+depth_data.txt
+depth_data2.txt
+depth_data3.txt
+depth_data*
+*.txt
+figs/
+.vscode/settings.json
+GOOD/build
+pointclouds/image.pcd
