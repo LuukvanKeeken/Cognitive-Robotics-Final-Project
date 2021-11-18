@@ -470,7 +470,7 @@ def parse_args():
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,
-                        default='CGR_ConvNet',
+                        default='mobileNetV2',
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--segmentationMethod',
                         type=str,
@@ -478,7 +478,7 @@ def parse_args():
                         help='Segmentation method (kmeans/watershed/synthetic)')                        
     parser.add_argument('--runs',
                         type=int,
-                        default=2,
+                        default=10,
                         help='Number of runs the scenario is executed')
     parser.add_argument('--attempts',
                         type=int,
