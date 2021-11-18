@@ -15,11 +15,9 @@ pandas
 pybullet
 attrdict
 seaborn
-
 sklearn
 matplotlib
 scipy
 skimage
 open3d
 tensorflow
-subprocess

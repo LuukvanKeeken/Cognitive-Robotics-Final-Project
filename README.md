@@ -1,7 +1,12 @@
 ## Finding and Grasping Objects Based on Visual Examples
 For requirements
     import requirements.txt
-    compile the c++-files of the folder "GOOD" with CMakeList.txt
+    compile the c++-files of the folder "GOOD" with CMakeList.txt in the folder "GOOD/build"
+        cd GOOD
+        mkdir build
+        cd build
+        cmake ../.
+        cmake --build .
 
 Start experiment
     An experiment can be started by executing the file "simulation.py". With Several arguments can be given 
