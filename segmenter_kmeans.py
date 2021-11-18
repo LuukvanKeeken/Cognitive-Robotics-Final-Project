@@ -1,7 +1,4 @@
-#import random
-#import matplotlib.pyplot as plt
 import numpy as np
-#import seaborn as sns
 from sklearn.cluster import KMeans
 import sklearn.metrics as metrics
 
@@ -90,7 +87,6 @@ class Segmenter:
           n_clusters objects.
         depth_image: the corresponding depth image.
         """
-
         self.rgb_image = rgb_image
         self.depth_image = depth_image
         self.n_clusters = n_clusters

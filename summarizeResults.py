@@ -28,7 +28,6 @@ def normalApproximationFromMean(sampleSize, p):
   
     return mu, std
 
-
 for filename in os.listdir(directory):
     if filename.endswith(".csv"):
         experiment = filename.replace(',', '')
@@ -47,7 +46,6 @@ for filename in os.listdir(directory):
 
         runsSuccess = df.correctObjectManipulations.mean()
         meanRunsSuccess, STDrunsSuccess = normalApproximation(df.correctObjectManipulations)
-        #runsSuccessSTD = df.correctObjectManipulations.std()
         
         predictionSuccesDividedRun = df.correctObjectMatch / df.totalPredictions
         meanPredictionSuccessPerRun = predictionSuccesDividedRun.mean()
@@ -65,17 +63,6 @@ for filename in os.listdir(directory):
         
         tableRow = [scenario, segmenter, matchingNetwork, graspingNetwork, meanRunsSuccess, STDrunsSuccess, predictionSuccesPerRun, meanPredictionSuccessPerRun, STDPredictionSuccessPerRun, meanRunsWithoutPileManipulation,STDRunsWithoutPileManipulation, meanPileManipulations,STDPileManipulations, meanRunsWithCorrectPredictionPerRun,STDRunsWithCorrectPredictionPerRun]
         tableData.append(tableRow)
-   
-
-        #numberOfFaultPredictedSegments
-        #pileManipulations
-        #wrongWorstPrediction
-        #pileManipulationGraspFaults
-        #correctObjectMatch
-        #correctManipulations
-        #correctGrasps     
-        #totalPredictions
-
     else:
         continue
 columns = ['scenario', 'segmenter', 'matchingNetwork', 'graspingNetwork', 'meanRunSuccess', 'STDRunSuccess', 'predictionSuccesPerRun', 'meanPredictionSuccessPerRun', 'STDPredictionSuccessPerRun ', 'meanRunsWithoutPileManipulation', 'STDRunsWithoutPileManipulation', 'meanPileManipulations', 'STDPileManipulations', 'meanRunsWithCorrectPredictionPerRun', 'STDRunsWithCorrectPredictionPerRun']

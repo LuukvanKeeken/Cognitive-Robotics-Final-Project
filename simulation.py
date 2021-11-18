@@ -1,8 +1,6 @@
 from fileinput import filename
-#import pathlib
 import argparse
 import math
-#import os
 import sys
 import time
 from random import randrange
@@ -12,9 +10,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pybullet as p
-#import torch
 from tqdm import tqdm
-
 
 from environment.env import Environment
 from environment.utilities import Camera
@@ -22,9 +18,7 @@ from grasp_generator import GraspGenerator
 from object_matching import ObjectMatching
 from segmenter_kmeans import Segmenter as Segmenter_kmeans
 from segmenter_watershed import Segmenter as Segmenter_watershed
-from utils import IsolatedObjData, YcbObjects#, PackPileData, summarize
-
-
+from utils import IsolatedObjData, YcbObjects
 
 
 class GrasppingScenarios():
@@ -95,7 +89,7 @@ class GrasppingScenarios():
 
         gripper_size = opening_len + 0.02
         finger_size = 0.075
-        # lineIDs = []
+
         lineIDs.append(
             p.addUserDebugLine([x, y, z], [x, y, z + 0.15], color,
                                lineWidth=6))
@@ -188,7 +182,6 @@ class GrasppingScenarios():
             self.example_object_name = objects.obj_names[exampleObjectNumber]
 
             # Pile of objects - LEFT
-            
             info = objects.get_n_first_obj_info(number_of_objects)
             
             self.target_object_names = []
@@ -202,12 +195,8 @@ class GrasppingScenarios():
 
             matchingObjectID = self.env.obj_ids[exampleObjectNumber + 1]
             self.graspExampleFromObjectsExperiment(objects.obj_names[0], self.ATTEMPTS, exampleCamera, camera, graspGenerator, objectMatchingModel, vis, matchingObjectID)
-
-            ## Write results to disk
-            #self.data.write_json(self.network_model)
-            #summarize(self.data.save_dir, runs, self.network_model)
+        
         self.writeExperimentResults()
-        #print(f"failed segmented matches: {self.failedSegmentMatchCounter}")
 
     def debugTruthObject(self, matchingObjectID, pileSegments, depth_img, generator):
         truthPos, _ = p.getBasePositionAndOrientation(matchingObjectID)
@@ -360,10 +349,7 @@ class GrasppingScenarios():
                 break
             
             # Next, capture an image with the objects camera, segment image and calculate several representations
-            #while manipulationAttempts < 3:
             pileBgr, pileDepth, pileSegmentation = camera.get_cam_img()
-            #for n, obj_name in self.env.obj_names.items():
-            #    print(f'{n}: {obj_name}')
             pileRgb = cv2.cvtColor(pileBgr, cv2.COLOR_BGR2RGB)
             unique = np.unique(pileSegmentation)
             trueNumberOfSegments = len(unique)-2
@@ -415,8 +401,7 @@ class GrasppingScenarios():
 
             # if the match is uncertain, try to manipulate the pile by removing the worst object
             manipulationAttempts +=1
-            if uncertain and manipulationAttempts <= 3:
-                #print('Uncertain!')           
+            if uncertain and manipulationAttempts <= 3:        
                 pileManipulations +=1
                 if worstPredictedID == realSegmentID: wrongWorstPrediction +=1
                 pos, segmentRGB, segmentDepth = pileSegments[worstPredictedID]
@@ -430,7 +415,6 @@ class GrasppingScenarios():
             pos, segmentRGB, segmentDepth = pileSegments[bestPredictedID]
             predictedGrasp, lineIDs, failed = self.createGrasp(graspGenerator, segmentRGB, segmentDepth, pileDepth, idx,  int(pos[0]) - 111, int(pos[1]) - 111)
             if failed:
-                #print('Failed!')
                 number_of_failures += 1
                 continue
 
@@ -470,7 +454,7 @@ def parse_args():
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,
-                        default='mobileNetV2',
+                        default='CGR_ConvNet',
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--segmentationMethod',
                         type=str,
@@ -484,13 +468,11 @@ def parse_args():
                         type=int,
                         default=3,
                         help='Number of attempts in case grasping failed')
-
     parser.add_argument('--save-network-output',
                         dest='output',
                         type=bool,
                         default=False,
                         help='Save network output (True/False)')
-
     parser.add_argument('--device',
                         type=str,
                         default='cpu',

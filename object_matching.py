@@ -10,9 +10,7 @@ try:
   import open3d as o3d
 except:
   print('Open3D is not installed. Do not use GOOD matching')
-import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import euclidean_distances
-
 
 class ObjectMatching:
     IMG_WIDTH = 224
@@ -86,7 +84,7 @@ class ObjectMatching:
             pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
             filepath = './pointclouds/image.pcd'
             o3d.io.write_point_cloud(filepath, pcd, write_ascii=True)
-            input = filepath # implement GOOD
+            input = filepath
         else:
             print("The selected network has not been implemented yet -- please choose another network!")
             exit()
@@ -96,8 +94,7 @@ class ObjectMatching:
             internal = self.base_model.predict(input)
         elif self.representationNetwork == 'GOOD':
             ##### GOOD #####
-            internal = self.get_good(input) # implement GOOD
-            #print(internal)
+            internal = self.get_good(input)
         else:
             with torch.no_grad():
                 xc = x.to(self.device)
@@ -115,7 +112,6 @@ class ObjectMatching:
     def matchExampleWithObjectRepresentation(self, exampleRepresentation, objectRepresentations, realSegmentID=0, exampleName='', targetNames=['']):
         """
             function should return the index of objectRepresentations
-
         """
         distances = []
         for _, representation in enumerate(objectRepresentations):
@@ -129,7 +125,6 @@ class ObjectMatching:
             elif self.representationNetwork == 'GOOD':
                 ##### GOOD #####
                 distance = euclidean_distances(np.array(exampleRepresentation).reshape(1, -1), np.array(representation).reshape(1, -1))[0][0]
-                #print(f'Euclidean distance between {targetNames[i]} and example {exampleName} is {distance}')
             else:
                 print('distance function for this network is not implemented')
                 exit()

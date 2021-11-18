@@ -1,14 +1,6 @@
-#import enum
-#import random
-
 import matplotlib.pyplot as plt
 import numpy as np
-#import seaborn as sns
-#from sklearn.cluster import KMeans
-#import sklearn.metrics as metrics
-#import cv2
 from skimage.segmentation import watershed
-#from skimage.feature import peak_local_max
 from scipy import ndimage as ndi
 from skimage.morphology import disk
 from skimage.filters import rank
