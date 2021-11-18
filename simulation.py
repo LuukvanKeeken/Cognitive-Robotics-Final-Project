@@ -1,8 +1,8 @@
 from fileinput import filename
-import pathlib
+#import pathlib
 import argparse
 import math
-import os
+#import os
 import sys
 import time
 from random import randrange
@@ -12,7 +12,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pybullet as p
-import torch
+#import torch
 from tqdm import tqdm
 
 
@@ -22,7 +22,7 @@ from grasp_generator import GraspGenerator
 from object_matching import ObjectMatching
 from segmenter_kmeans import Segmenter as Segmenter_kmeans
 from segmenter_watershed import Segmenter as Segmenter_watershed
-from utils import IsolatedObjData, PackPileData, YcbObjects, summarize
+from utils import IsolatedObjData, YcbObjects#, PackPileData, summarize
 
 
 
@@ -403,20 +403,6 @@ class GrasppingScenarios():
             objectRepresentations = []
             for _, segment in enumerate(pileSegments):
                 _, segmentRGB, segmentDepth = segment
-                if False:
-                    fig, axes = plt.subplots(ncols=2, figsize=(9, 2), sharex=True, sharey=True, num=1)
-                    ax = axes.ravel()
-
-                    ax[0].imshow(segmentRGB)
-                    ax[0].set_title('Segmented RGB')
-                    ax[1].imshow(segmentDepth, cmap=plt.cm.gray)
-                    ax[1].set_title('Segmented Depth')
-
-                    for a in ax:
-                        a.set_axis_off()
-
-                    fig.tight_layout()
-                    plt.show()
                 objectRepresentations.append(objectMatchingModel.calculateRepresentation(segmentRGB, segmentDepth))#, segmentDepth, n_grasps=3))
 
             # For each object representation, match it with the sample object representation
@@ -488,11 +474,11 @@ def parse_args():
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--segmentationMethod',
                         type=str,
-                        default='synthetic',
+                        default='kmeans',
                         help='Segmentation method (kmeans/watershed/synthetic)')                        
     parser.add_argument('--runs',
                         type=int,
-                        default=100,
+                        default=2,
                         help='Number of runs the scenario is executed')
     parser.add_argument('--attempts',
                         type=int,
@@ -511,7 +497,7 @@ def parse_args():
                         help='device (cpu/gpu)')
     parser.add_argument('--vis',
                         type=bool,
-                        default=False,
+                        default=True,
                         help='vis (True/False)')
     parser.add_argument('--report',
                         type=bool,
