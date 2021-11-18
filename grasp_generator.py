@@ -9,7 +9,6 @@ from network.utils.data.camera_data import CameraData
 from network.utils.dataset_processing.grasp import detect_grasps
 from network.utils.visualisation.plot import plot_results
 
-
 class GraspGenerator:
     IMG_WIDTH = 224
     IMG_ROTATION = -np.pi * 0.5

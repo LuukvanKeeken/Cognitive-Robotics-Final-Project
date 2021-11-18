@@ -176,10 +176,6 @@ class PackPileData:
             plt.legend(self.models)    
             # save graph
             plt.savefig(self.save_dir+'/m_plot.png')
-        
-               
-            
-
 
 class IsolatedObjData:
 
@@ -204,20 +200,6 @@ class IsolatedObjData:
 
     def add_try(self, obj_name):
         self.tries[obj_name] += 1
-
-    # def write_json(self):
-    #     data_tries = json.dumps(self.tries)
-    #     data_target = json.dumps(self.succes_target)
-    #     data_grasp = json.dumps(self.succes_grasp)
-    #     f = open(self.save_dir+'/data_tries.json', 'w')
-    #     f.write(data_tries)
-    #     f.close()
-    #     f = open(self.save_dir+'/data_target.json', 'w')
-    #     f.write(data_target)
-    #     f.close()
-    #     f = open(self.save_dir+'/data_grasp.json', 'w')
-    #     f.write(data_grasp)
-    #     f.close()
 
     def write_json(self, modelname):
         data_tries = json.dumps(self.tries)

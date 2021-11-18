@@ -1,8 +1,8 @@
-import random
+#import random
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
+#import seaborn as sns
 from sklearn.cluster import KMeans
 import sklearn.metrics as metrics
 
@@ -72,33 +72,6 @@ class Segmenter:
             self.clusters[self.labels[i]].append([
                 self.data_for_clustering[i][0], self.data_for_clustering[i][1]
             ])
-        # else:
-        #     print("n_clusters: " + str(n_clusters))
-        #     inertias = []
-        #     max_score = -1
-        #     max_clusters = 0
-        #     for i in range(2,12):
-        #         kmeans = KMeans(n_clusters=i,
-        #                         random_state=0).fit(self.data_for_clustering)
-        #         inertias.append(kmeans.inertia_)
-        #         score = metrics.silhouette_score(self.data_for_clustering,kmeans.labels_,metric="euclidean",sample_size=1000,random_state=200)
-        #         print ("Silhouette score for k(clusters) = "+str(i)+" is " +str(score))
-        #         if score > max_score:
-        #             max_score = score
-        #             max_clusters = i
-
-        #     print(str(max_clusters) + " clusters, with score of " + str(max_score))
-            
-        #     exit(0)
-        #     inert_plot = plt.figure()
-        #     inert_plotax = inert_plot.add_subplot()
-        #     inert_plotax = sns.scatterplot(x= range(1,12), y= inertias)
-
-        #     second_deriv = []
-        #     for i in range(1,10):
-        #         print(str(i+1) + ": " + str(inertias[i+1] + inertias[i-1] - 2 * inertias[i]))
-        #     plt.show()
-        #     exit(0)
 
     def get_segmentations(self, rgb_image, depth_image, n_clusters):
         """
