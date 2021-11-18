@@ -454,7 +454,7 @@ def parse_args():
                         help='Network model (GR_ConvNet/CGR_ConvNet)')
     parser.add_argument('--matchingNetwork',
                         type=str,
-                        default='CGR_ConvNet',
+                        default='mobileNetV2',
                         help='Network model (GR_ConvNet/CGR_ConvNet/mobileNetV2/GOOD)')
     parser.add_argument('--segmentationMethod',
                         type=str,
@@ -468,35 +468,19 @@ def parse_args():
                         type=int,
                         default=3,
                         help='Number of attempts in case grasping failed')
-    parser.add_argument('--save-network-output',
-                        dest='output',
-                        type=bool,
-                        default=False,
-                        help='Save network output (True/False)')
-    parser.add_argument('--device',
-                        type=str,
-                        default='cpu',
-                        help='device (cpu/gpu)')
     parser.add_argument('--vis',
                         type=bool,
                         default=True,
                         help='vis (True/False)')
-    parser.add_argument('--report',
-                        type=bool,
-                        default=True,
-                        help='report (True/False)')
 
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
     args = parse_args()
-    output = args.output
     runs = args.runs
     ATTEMPTS = args.attempts
-    device = args.device
     vis = args.vis
-    report = args.report
 
     grasp = GrasppingScenarios(args.graspingNetwork, args.matchingNetwork, args.segmentationMethod, args.scenario)
-    grasp.graspExampleFromObjectsScenario(runs, device, vis, debug=False)
+    grasp.graspExampleFromObjectsScenario(runs, device = 'cpu', vis = vis, debug=False)
